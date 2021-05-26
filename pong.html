@@ -1,0 +1,171 @@
+<html>
+<head>
+  <title>Jason's pong game</title>
+  <style>
+    div { position: absolute; transition: 0.025s linear; }
+    #board {
+        border: 4px solid #444;
+        top: 10px;
+        left: 10px;
+        width: 800px;
+        height: 600px;
+    }
+    #ball {
+        background: black;
+        width: 16px;
+        height: 16px;
+        top: 400px;
+        left: 300px;
+        border-radius: 50%;
+    }
+    .paddle {
+        background: blue;
+        width: 20px;
+        height: 140px;
+        border-radius: 8px;
+    }
+    #paddle1 { top: 100px; left: 20px; }
+    #paddle2 { top: 200px; left: 784px; }
+  </style>
+</head>
+<body>
+  <div id="board"></div>
+  <div id="ball"></div>
+  <div id="paddle1" class="paddle"></div>
+  <div id="paddle2" class="paddle"></div>
+
+  <script>
+    // Ball location                                                                                                                                                       
+let ballX = 400, ballY = 300;
+let ballSpeed = 3;
+let ballRadians = 0.1;
+const ballSize = 16;
+
+const board = document.getElementById('board');
+const ball = document.getElementById('ball');
+const paddle1 = document.getElementById('paddle1');
+let paddle1y = 100;
+let paddle1angle = 0;
+const paddle2 = document.getElementById('paddle2');
+let paddle2y = 200;
+let paddle2angle = 0;
+let paddle1Height = 140;
+let paddle2Height = 140;
+const paddleWidth = 20;
+
+// board boundaries                                                                                                                                                    
+const boardRect = board.getBoundingClientRect();
+
+
+function rotatePaddle1(delta) {
+  paddle1angle = Math.max(-0.25, Math.min(0.25, paddle1angle + delta));
+  paddle1.style.transform = "rotate(" + paddle1angle + "rad)";
+}
+
+function rotatePaddle2(delta) {
+  paddle2angle = Math.max(-0.25, Math.min(0.25, paddle2angle + delta));
+  paddle2.style.transform = "rotate(" + paddle2angle + "rad)";
+}
+
+document.addEventListener('keydown', idKey);
+
+function idKey(e) {
+  // Player 1 uses WASD keys.                                                                                                                                          
+  if (e.key == "d") {
+    rotatePaddle1(0.02);
+  }
+  else if (e.key == "a") {
+    rotatePaddle1(-0.02);
+  }
+  else if (e.key == "w") {
+    paddle1y = Math.max(boardRect.top + 5, paddle1y - 10);
+    paddle1.style.top = paddle1y + "px";
+  }
+  else if (e.key == "s") {
+    paddle1y = Math.min(boardRect.bottom - 5 - paddle1Height, paddle1y + 10);
+    paddle1.style.top = paddle1y + "px";
+  }
+  // Player 2 uses arrow keys                                                                                                                                          
+  else if (e.code == "ArrowRight") {
+    rotatePaddle2(0.02);
+  }
+  else if (e.code == "ArrowLeft") {
+    rotatePaddle2(-0.02);
+  }
+  else if (e.code == "ArrowUp") {
+    paddle2y = Math.max(boardRect.top + 5, paddle2y - 10);
+    paddle2.style.top = paddle2y + "px";
+  }
+  else if (e.code == "ArrowDown") {
+    paddle2y = Math.min(boardRect.bottom - 5 - paddle2Height, paddle2y + 10);
+    paddle2.style.top = paddle2y + "px";
+  }
+  else {
+    console.log("wrong key");
+    console.log(e);
+  }
+}
+
+
+function checkCollision(paddleEl, newX, newY) {
+  const paddleRect = paddleEl.getBoundingClientRect();
+  return (newY + ballSize >= paddleRect.top &&
+          newY <= paddleRect.bottom &&
+          newX + ballSize >= paddleRect.left &&
+          newX <= paddleRect.right);
+}
+
+
+function moveBallLoop() {
+  // Think about where the ball would be after this movement.                                                                                                          
+  let dx = ballSpeed * Math.cos(ballRadians);
+  let dy = ballSpeed * Math.sin(ballRadians);
+  let newX = ballX + dx;
+  let newY = ballY + dy;
+  let newBallRadians = ballRadians;
+
+  // Bounce off of each paddle                                                                                                                                         
+  if (checkCollision(paddle1, newX, newY)) {
+    newBallRadians = Math.PI - ballRadians + (paddle1angle * 2);
+    ballSpeed = ballSpeed + 0.1;
+    paddle1Height = Math.max(20, paddle1Height - 5);
+    paddle1.style.height = paddle1Height + 'px';
+    rotatePaddle1(0.1 * ((newY - paddle1y - (paddle1Height/2)) / paddle1Height));
+  }
+  else if (checkCollision(paddle2, newX, newY)) {
+    newBallRadians = Math.PI - ballRadians + (paddle2angle * 2);
+    ballSpeed = ballSpeed + 0.1;
+    paddle2Height = Math.max(20, paddle2Height - 5);
+    paddle2.style.height = paddle2Height + 'px';
+    rotatePaddle2(-0.1 * ((newY - paddle2y - (paddle2Height/2)) / paddle2Height));
+  }
+
+  // Bounce off the walls of the board.                                                                                                                                
+  else if (newX < boardRect.left || newX + ballSize > boardRect.right) {
+    newBallRadians = Math.PI - ballRadians;
+    ballSpeed = 3;
+    paddle1Height = 140;
+    paddle1.style.height = paddle1Height + 'px';
+    paddle2Height = 140;
+    paddle2.style.height = paddle2Height + 'px';
+  }
+  else if (newY < boardRect.top || newY + ballSize > boardRect.bottom) {
+    newBallRadians = 0 - ballRadians;
+  }
+
+  // Once we have computed the new angle, save that and update the elements.                                                                                           
+  ballRadians = newBallRadians;
+  dx = ballSpeed * Math.cos(ballRadians);
+  dy = ballSpeed * Math.sin(ballRadians);
+  ballX = ballX + dx;
+  ballY = ballY + dy;
+  ball.style.left = newX + "px";
+  ball.style.top = newY + "px";
+}
+
+
+setInterval(moveBallLoop, 25);
+    
+  </script>
+</body>
+</html>
