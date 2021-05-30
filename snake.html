@@ -1,0 +1,189 @@
+<html>
+  <head><title>Snake game</title>
+    <style>
+      section {
+         display: grid;
+         grid-template-columns: repeat(24, 12px);
+         grid-template-rows: repeat(24, 12px);
+      }
+      div {
+        width: 10px;
+        height: 10px;
+        background: lightgrey;
+      }
+      div.black {
+        background: black;
+      }
+      button {margin: 10px;}
+    </style>
+  </head>
+  <body>
+    
+    <button>Start</button>
+<span id="msg">Snake!</span>
+<section>
+  <!-- 24x24 empty div elements will be added here. -->
+</section>
+
+<p>Keys: w, a, s, d.</p>
+    
+    <script>
+ // Create the HTML elmements, these never change, only their CSS class changes.
+let sectionEl = document.querySelector("section");
+for (let i=0; i<24*24; i++) {
+  sectionEl.appendChild(document.createElement('div'));
+}
+
+// Board is 24x24 matrix of pixels that start false
+let board = [];
+function initializeBoard() {
+  board = [];
+  for (let i=0; i<24*24; i++) {
+    board.push(true);
+  }
+}
+
+function render() {
+  let pixels = document.querySelectorAll('div');
+  let i = 0;
+  for (pixel of pixels) {
+    pixel.className = board[i] ? 'white' : 'black';
+    i++;
+  }
+}
+
+function drawWhite(x, y) {
+  let index = y * 24 + x;
+  board[index] = true;
+}
+
+function drawBlack(x, y) {
+  let index = y * 24 + x;
+  board[index] = false;
+}
+
+function drawWalls() {
+  for (let x=0; x<24; x++) {
+    drawBlack(x, 0);
+    drawBlack(x, 23);
+  }
+  for (let y=0; y<24; y++) {
+    drawBlack(0, y);
+    drawBlack(23, y);
+  }
+}
+
+let snake = [];
+function initializeSnake() {
+  direction = 's';
+  snake = [[12, 4],  // snakes head 
+           [11, 4], 
+           [10, 4],
+           [9, 4],
+           [8, 4]];  // last segement is white
+}
+
+function drawSnake(){
+  for (let segment of snake) {
+    drawBlack(segment[0], segment[1]);
+  }
+  let whiteSegment = snake[snake.length - 1];
+  drawWhite(whiteSegment[0], whiteSegment[1]);
+}
+
+// Direction the head is moving: w, a, s, d.
+let direction = "s";
+
+// This inserts a new segment at the start of the snake to represent the new position of the head.  To keep the snake the same length, the last segment is removed.
+function moveSnakeHeadAndTail() {
+  let newHead = [snake[0][0], snake[0][1]];
+  if (direction == "w") newHead[1]--;
+  if (direction == "s") newHead[1]++;
+  if (direction == "a") newHead[0]--;
+  if (direction == "d") newHead[0]++;
+  snake.unshift(newHead);  // adds to front
+  snake.pop(); // removes last item
+}
+
+// Given the user's input, change the direction of the snake, if it is legal.
+function maybeChangeDirection(key) {
+  if (key == "w" && (direction == "a" || direction == "d")) direction = key;
+  if (key == "s" && (direction == "a" || direction == "d")) direction = key;
+  if (key == "a" && (direction == "w" || direction == "s")) direction = key;
+  if (key == "d" && (direction == "w" || direction == "s")) direction = key;
+}
+
+var lastKey = null;
+document.addEventListener(
+  'keydown', (e) => {lastKey = e.key;});
+
+// Return a random in between min and max-1.
+function getRndInteger(min, max) {
+  return Math.floor(Math.random() * (max - min) ) + min;
+}
+
+let appleX = null;
+let appleY = null;
+
+function moveApple() {
+  // Remove the eaten apple otherwise it will count as a collision;
+  drawWhite(appleX, appleY);
+  appleX = getRndInteger(1, 24);
+  appleY = getRndInteger(1, 24);
+}
+
+function drawApple() {
+  drawBlack(appleX, appleY);
+}
+
+function checkApple() {
+  if (appleX == snake[0][0] &&
+     appleY == snake[0][1]) {
+    // Grow by copying the last segement
+    snake.push(snake[snake.length - 1]);
+    moveApple();
+  }
+}
+
+let gameLoopIntervalId = null;
+function start() {
+  initializeBoard();
+  drawWalls();
+  initializeSnake();
+  moveApple();
+  gameLoopIntervalId = setInterval(gameLoop, 700);
+  document.querySelector('#msg').innerText = 'Snake!';
+}
+
+
+// If the snake head hits any black pixel, it is game over.  
+// This is called after the apple has alredy been checked.
+function endGameIfCollision(){
+  let snakeHeadX = snake[0][0];
+  let snakeHeadY = snake[0][1];
+  let index = snakeHeadY * 24 + snakeHeadX;
+  if (board[index] == false) gameOver();
+}
+
+function gameLoop() {
+  maybeChangeDirection(lastKey);
+  moveSnakeHeadAndTail();
+  checkApple();
+  endGameIfCollision();
+  drawSnake();
+  drawApple();
+  render();
+}
+
+function gameOver(){
+  clearInterval(gameLoopIntervalId);
+  document.querySelector('#msg').innerText = 'Game over.  Length: ' + snake.length - 1;
+}
+
+
+document.querySelector('button').addEventListener('click', (e) => {gameOver(); start();});
+
+      
+    </script>
+  </body>
+</html>
