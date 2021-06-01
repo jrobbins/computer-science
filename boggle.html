@@ -1,0 +1,292 @@
+<html>
+  <head><title>Boggle</title>
+    <style>
+      body {
+  display: grid;
+  grid-template-columns: repeat(3, 300px);  
+}
+section {
+  display: grid;
+  grid-template-columns: repeat(5, 58px);
+  grid-template-rows: repeat(5, 58px);
+  margin: 5px;
+  user-select: none;
+}
+section div {
+  width: 48px;
+  height: 48px;
+  background: #ddd;
+  font-size: 36px;
+  text-align: center;
+}
+.stopped section div {
+  background: #bbb;
+}
+section div[data-idx] {
+  background: lightblue;
+}
+body > div {
+  padding: 30px;
+}
+#info button { margin-bottom: 10px;}
+    </style>
+  </head>
+  <body>
+    
+    
+    <div id="info">
+  <button id="start">Start</button>
+  <p>Drag to form words</p>
+  <div>Time remaining:</div> <progress id="time" value=0 min=0 max=90></progress>
+  <p>Score: <span id="score"></span></p>
+</div>
+
+<section>
+  <!-- divs will be added here -->
+</section>
+
+<div>Your words:
+  <ul id=yourwords>
+  </ul>
+</div>
+    
+    <script src="https://jrobbins.github.io/computer-science/wordlist.js"></script>
+    <script>
+// We want "Big boggle"
+const boardSize = 5;
+
+// Create the HTML elmements
+let sectionEl = document.querySelector("section");
+for (let r=0; r<boardSize; r++) {
+  for (let c=0; c<boardSize; c++) { 
+    let newDiv = document.createElement('div');
+    newDiv.dataset['r'] = r;
+    newDiv.dataset['c'] = c;
+    sectionEl.appendChild(newDiv);
+  }
+}  
+const dice = document.querySelectorAll(' section div');
+const yourWordsEl = document.querySelector('#yourwords');
+const bodyEl = document.querySelector('body');
+
+
+// Give more common letters and fewer rare letters.
+const cubes = [
+  'AAEEGN'.split(''),
+	'ABBJOO'.split(''),
+	'ACHOPS'.split(''),
+	'AFFKPS'.split(''),
+	'AOOTTW'.split(''),
+	'CIMOTU'.split(''),
+	'DEILRX'.split(''),
+	'DELRVY'.split(''),
+	'DISTTY'.split(''),
+	'EEGHNW'.split(''),
+	'EEINSU'.split(''),
+	'EHRTVW'.split(''),
+	'EIOSST'.split(''),
+	'ELRTTY'.split(''),
+	'H I M N U Qu'.split(' '),
+	'HLNNRZ'.split(''),
+  // More for big boggle
+  'MAEEGN'.split(''),
+	'ABBJOO'.split(''),
+	'ACHOPS'.split(''),
+	'AFFKPS'.split(''),
+	'AOOTTW'.split(''),
+	'CIMOTU'.split(''),
+	'DEILRX'.split(''),
+	'DELRVY'.split(''),
+	'DISTTY'.split(''),
+];
+
+function chooseOne(arr) {
+  let idx = Math.floor(Math.random() * arr.length);
+  return arr[idx];
+}
+
+function scramble(arr) {
+  let result = Array.from(arr);
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * i);
+    const temp = result[i];
+    result[i] = result[j];
+    result[j] = temp;
+  }
+  return result;
+}
+
+let timeRemaining = 0;
+let score = 0;
+let running = false;
+
+// This is the list of letters that the user has selected.  Each is [r, c].
+let snake = [];
+
+// This is a list of strings for the good and bad words that the user has made.
+let yourWords = [];
+
+// Board is 4x4 matrix of random letters
+let board = [];
+function initializeBoard() {
+  board = [];
+  for (let r=0; r<boardSize; r++) {
+    board[r] = [];
+    for (let c=0; c<boardSize; c++) {
+      board[r][c] = '';
+    }
+  }
+}
+
+function fillBoard() {
+  let letters = [];
+  for (let cube of cubes) {
+    letters.push(chooseOne(cube));
+  }
+  const scrambledLetters = scramble(letters);
+  board = [];
+  for (let r=0; r<boardSize; r++) {
+    board[r] = [];
+    for (let c=0; c<boardSize; c++) {
+      board[r][c] = scrambledLetters.shift();
+    }
+  }
+}
+
+function initializeSnake() {
+  snake = [];
+  dice.forEach((die) => {
+    delete die.dataset.idx;})  
+}
+
+function render() {
+  let i = 0;
+  for (die of dice) {
+    die.innerText = board[die.dataset.r][die.dataset.c];
+    i++;
+  }
+  document.getElementById('time').value = timeRemaining;
+  document.getElementById('score').innerText = score;
+  bodyEl.className = running ? 'running' : 'stopped';
+}
+
+// Note: wordList is loaded from a separate .js file.
+function computeScore(word) {
+  if (yourWords.includes(word)) return 0;
+  if (word.length < 3) return 0;
+  let valid = false;
+  if (wordList.includes(word)) valid = true;
+  if (word[word.length - 1] == 's' &&
+     wordList.includes(word.slice(0, word.length-1))) valid = true;
+  if (!valid) return 0;
+  if (word.length == 3) return 1;
+  if (word.length >= 8) return 11;
+  return word.length - 3;
+ }
+
+initializeBoard()
+render();
+
+function startGame() {
+  timeRemaining = 90;
+  fillBoard();
+  initializeSnake();
+  yourWords = [];
+  while (yourWordsEl.firstChild) {
+    yourWordsEl.removeChild(yourWordsEl.firstChild);
+  }
+  score = 0;
+  running = true;
+  render();
+}
+
+document.getElementById('start').addEventListener('click', startGame);
+
+function gameLoop() {
+  if (!running) return;
+  if (running) {
+    timeRemaining--;
+  }
+  if (timeRemaining <= 0) {
+    running = false;
+    let divider = document.createElement('li');
+    divider.innerText = '-- TIME EXPIRED --'
+    yourWordsEl.appendChild(divider);
+  }
+  render();
+}
+
+setInterval(gameLoop, 1000);
+
+function pushSnake(die) {
+  die.dataset.idx = snake.length;
+  let r = Number(die.dataset.r);
+  let c = Number(die.dataset.c);
+  snake.push([r, c]);  
+}
+
+function startLetter(e) {
+  if (snake.length > 0) {
+    initializeSnake();
+  }
+  let die = e.target;
+  pushSnake(die);
+}
+
+function dragLetter(e) {
+  if (!e.buttons) return;
+  let die = e.target;
+  let idx = die.dataset.idx;
+  if (idx === undefined) {
+    // The user is adding a letter
+    let tail = snake[snake.length - 1];
+    // Can only add a neighbor
+    let r = Number(die.dataset.r);
+    let c = Number(die.dataset.c);
+    if (tail === undefined ||
+        r >= tail[0] - 1 && 
+        r <= tail[0] + 1 &&
+        c >= tail[1] - 1 &&
+        c <= tail[1] + 1) {
+      pushSnake(die);
+    }
+  }
+  else {
+    // The user is backing up
+    while (idx < snake.length - 1) {
+    let tail = snake.pop();
+    let tailDie = document.querySelector('[data-idx="' + snake.length + '"]');
+    delete tailDie.dataset.idx;
+    }
+  }
+}
+
+function finishWord(e) {
+  if (snake.length == 0) return;
+  let word = '';
+  let diceArray = Array.from(dice);
+  for (let rc of snake) {
+    let index = rc[0] * boardSize + rc[1];
+    let die = diceArray[index];
+    word += die.innerText;
+  }
+  word = word.toLowerCase();
+  let wordScore = computeScore(word);
+  score += wordScore;
+  yourWords.push(word);
+  let newItem = document.createElement('li');
+  newItem.innerText = word + ': ' + wordScore;
+  yourWordsEl.appendChild(newItem);
+  initializeSnake();
+}
+
+dice.forEach((die) => {
+  die.addEventListener('mousedown',  startLetter);
+  die.addEventListener('mouseenter',  dragLetter);
+  die.addEventListener('mouseup',  finishWord);
+});
+
+
+    </script>
+  </body>
+</html>
