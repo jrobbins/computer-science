@@ -1,0 +1,181 @@
+<html>
+  <head><title>Forth interpreter</title>
+    <style>
+      #output  {
+  font-family: monospace;
+  white-space: pre;
+}
+
+input {
+  margin-top: 20px;
+}
+    </style>
+  </head>
+  <body>
+    
+<div id=output>
+  <div>Welcome to FORTH</div>
+</div>
+
+
+<input id="input" size=80>
+<button>Run</button>
+
+    
+    <script>
+      
+let inputEl = document.querySelector('input');
+let outputEl = document.querySelector('#output');
+let runEl = document.querySelector('button');
+
+function output(s){
+  let divEl = document.createElement('div');
+  divEl.innerText = s;
+  outputEl.appendChild(divEl);
+}
+
+let stack = [];
+
+const variables = []; // a list of [name, value]
+
+const builtIns = {
+  swap: function () {
+    let a = stack.pop();
+    let b = stack.pop();
+    stack.push(a);
+    stack.push(b);
+  },
+  over: function () {
+    let a = stack.pop();
+    let b = stack.pop();
+    stack.push(b);
+    stack.push(a);    
+    stack.push(b);
+  },
+  drop: function() {stack.pop()},
+  rot: function () {
+    let a = stack.pop();
+    let b = stack.pop();
+    let c = stack.pop();
+    stack.push(a);
+    stack.push(c);
+    stack.push(b);
+  },  
+  dup: function() {
+    let a = stack.pop();
+    stack.push(a);
+    stack.push(a);
+  },
+  cr: function() {output('')},
+  emit: function() {output(String.fromCharCode(stack.pop()))},
+  invert: function () {
+    stack.push(stack.pop() ? 0 : -1)
+  },
+  and: function () {
+    stack.push(stack.pop() && stack.pop() ? -1 : 0)
+  },
+  or: function () {
+    stack.push(stack.pop() || stack.pop() ? -1 : 0)
+  },
+  variable: function () {
+    let name = unprocessedWords.shift();
+    if (findVariable(name) != null) {
+      output('Variable ' + name + ' is already defined');
+      return;
+    }
+    variables.push([name, 0]);
+  } 
+}
+
+builtIns['.'] = function() {output(stack.pop());};
+
+builtIns['+'] = function() {stack.push(stack.pop() + stack.pop());};
+
+builtIns['-'] = function() {stack.push(stack.pop() - stack.pop());};
+
+builtIns['*'] = function() {stack.push(stack.pop() * stack.pop());};
+
+builtIns['/'] = function() {stack.push(Math.floor(stack.pop() / stack.pop()));};
+
+builtIns['='] = function() {stack.push(stack.pop() == stack.pop() ? -1 : 0);};
+
+builtIns['>'] = function() {stack.push(stack.pop() <= stack.pop() ? -1 : 0);};
+
+builtIns['<'] = function() {stack.push(stack.pop() >= stack.pop() ? -1 : 0);};
+
+builtIns[':'] = function() {
+  output('user-defined functions are not supported yet');
+  while (unprocessedWords.length && ';' != unprocessedWords.shift());
+};
+builtIns['alloc'] = function() {
+  output('alloc is not supported yet');
+};
+builtIns['cells'] = function() {
+  // do nothing because it would multiply by 1.
+};
+
+builtIns['@'] = function() {
+  stack.push(variables[stack.pop()][1]);
+}
+
+builtIns['!'] = function() {
+  variables[stack.pop()][1] = stack.pop();
+}
+
+
+function findVariable(word) {
+  for (let i = 0; i<variables.length; i++)
+    if (word == variables[i][0]) {
+      return i;
+    }
+  return null;
+}
+
+
+function execute(word) {
+  if (!isNaN(word)) {
+    stack.push(Number(word));
+    return;
+  }
+  let f = builtIns[word];
+  var addr = findVariable(word);
+  
+  if (f) { 
+    f.call();
+  } else if (addr != null) {
+    stack.push(addr);
+  } else {
+    // TODO: user-defined functions
+    output('unknown word: ' + word);
+  }
+}
+
+let unprocessedWords = [];
+
+function repl(s) {
+  if (s.length == 0) return;
+  output('>> ' + s);
+  unprocessedWords = s.split(' ');
+  while (w = unprocessedWords.shift()) {
+    execute(w);
+  }
+  output('Stack is: ' + stack.join(' '));
+  output('ok');
+  output('');
+  inputEl.value = '';
+}
+
+runEl.addEventListener('click', (e) => {
+  repl(inputEl.value); 
+  inputEl.value = '';
+});
+inputEl.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter' || e.keyCode === 13) {
+      repl(inputEl.value);
+      inputEl.value = '';
+    }
+});
+      
+    </script>
+  </body>
+</html>
