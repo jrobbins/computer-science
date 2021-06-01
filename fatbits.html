@@ -1,0 +1,94 @@
+<html>
+  <head><title></title>
+    <style>
+      section {
+  display: grid;
+  grid-template-columns: repeat(24, 12px);
+  grid-template-rows: repeat(24, 12px);
+}
+div {
+  width: 10px;
+  height: 10px;
+  background: lightgrey;
+}
+div.black {
+  background: black;
+}
+button {margin: 10px;}
+    </style>
+  </head>
+  <body>
+    <span id="msg">Fat Bits</span>
+<section>
+  <!-- 24x24 empty div elements will be added here. -->
+</section>
+
+<p>Click and drag to draw.</p>
+<button id="clear">Clear</button>
+    
+    <script>
+// Create the HTML elmements
+let sectionEl = document.querySelector("section");
+for (let r=0; r<24; r++)
+  for (let c=0; c<24; c++) {
+    let newDiv = document.createElement('div');
+    newDiv.dataset.r = r;
+    newDiv.dataset.c = c;    sectionEl.appendChild(newDiv);
+}
+let pixels = document.querySelectorAll('section div');
+
+// Board is 24x24 matrix of pixels that start false
+let board = [];
+function initializeBoard() {
+  board = [];
+  for (let i=0; i<24*24; i++) {
+    board.push(true);
+  }
+}
+
+function render() {
+  let i = 0;
+  for (pixel of pixels) {
+    pixel.className = board[i] ? 'white' : 'black';
+    i++;
+  }
+}
+
+function clear() {
+  initializeBoard();
+  render();
+}
+
+clear();
+
+document.querySelector('button').addEventListener('click', clear);
+
+
+let drawingMode = true;
+
+function draw(pixel) {
+  let r = Number(pixel.dataset.r);
+  let c = Number(pixel.dataset.c);
+  let index = r * 24 + c;
+  board[index] = drawingMode;
+  render();
+}
+
+function startDrawing(pixel) {
+  drawingMode = (pixel.className == 'black') ? true : false;
+  draw(pixel);
+}
+
+pixels.forEach((pixel => {
+  pixel.addEventListener(
+    'mousedown', (e) => {
+      startDrawing(e.target);
+    });
+  pixel.addEventListener(
+    'mouseenter', (e) => {
+      if (e.buttons) draw(e.target);
+    });     
+}));
+    </script>
+  </body>
+</html>
