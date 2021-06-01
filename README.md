@@ -7,4 +7,5 @@ Simple computer science exercises for students
 * https://jrobbins.github.io/computer-science/snake.html
 * https://jrobbins.github.io/computer-science/fatbits.html
 * https://jrobbins.github.io/computer-science/forth.html
+* https://jrobbins.github.io/computer-science/boggle.html
 
