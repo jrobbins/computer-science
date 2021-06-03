@@ -1,0 +1,175 @@
+<html>
+  <head><title><Conway's Game of Life/title>
+    <style>
+    section {
+  display: grid;
+  grid-template-columns: repeat(40, 12px);
+  grid-template-rows: repeat(40, 12px);
+  cursor: pointer;
+}
+div {
+  width: 10px;
+  height: 10px;
+  background: lightgrey;
+}
+div.life1 { background: #229922; }
+div.life2 { background: #227722; }
+div.life3 { background: #225522; }
+div.life4 { background: #223322; }
+div.life5 { background: #324422; }
+div.life6 { background: #424422; }
+div.life7 { background: #424311; }
+div.life8 { background: #624211; }
+div.life9 { background: #524B00; }
+
+button {margin: 10px;}
+    </style>
+  </head>
+  <body>
+    
+    <span id="msg">Conway's Game of Life</span>
+<section>
+  <!-- 40x40 empty div elements will be added here. -->
+</section>
+
+<p>Click and drag to draw.</p>
+<button id="play-pause">Play</button>
+<button id="clear">Clear</button>
+    
+    <script>
+      const boardSize = 40;
+
+// Create the HTML elmements
+let sectionEl = document.querySelector("section");
+for (let r=0; r<boardSize; r++)
+  for (let c=0; c<boardSize; c++) {
+    let newDiv = document.createElement('div');
+    newDiv.dataset.r = r;
+    newDiv.dataset.c = c;    sectionEl.appendChild(newDiv);
+}
+let pixels = document.querySelectorAll('section div');
+let running = false;
+
+// Board is 24x24 matrix of pixels that start false
+let board = [];
+function initializeBoard() {
+  board = [];
+  for (let r=0; r<boardSize; r++) {
+    let row = [];
+    board.push(row);
+    for (let c=0; c<boardSize; c++) {
+      row.push(0);
+    }
+  }
+}
+
+function render() {
+  let i = 0;
+  for (pixel of pixels) {
+    let r = Math.floor(i / boardSize);
+    let c = i % boardSize
+    pixel.className = 'life' + board[r][c];
+    i++;
+  }
+}
+
+function clear() {
+  initializeBoard();
+  render();
+}
+
+clear();
+
+
+function playPause() {
+  if (running) {
+     running = false;
+    // cancel
+     document.querySelector('#play-pause').innerText = 'Play';
+  } else {
+    running = true;
+    document.querySelector('#play-pause').innerText = 'Pause';
+  }
+}
+
+// Based on http://rosettacode.org/wiki/Conway%27s_Game_of_Life#JavaScript
+function update() {
+  	let boardNext = new Array(board.length);
+		for (var i = 0; i < board.length; i++) {
+			boardNext[i] = new Array(board[i].length);
+		}
+		for (var x = 0; x < board.length; x++) {
+			for (var y = 0; y < board[x].length; y++) {
+				var n = 0;
+				for (var dx = -1; dx <= 1; dx++) {
+					for (var dy = -1; dy <= 1; dy++) {
+						if ( dx == 0 && dy == 0){}
+						else if (typeof board[x+dx] !== 'undefined'
+								&& typeof board[x+dx][y+dy] !== 'undefined'
+								&& board[x+dx][y+dy]) {
+							n++;
+						}
+					}	
+				}
+				var age = board[x][y];
+				switch (n) {
+					case 0:
+					case 1:
+						age = 0;
+						break;
+					case 2:
+            if (age) age = Math.min(age + 1, 9);
+						break; 
+					case 3:
+						age = Math.min(age + 1, 9);
+						break;
+					default:
+						age = 0;
+				}
+				boardNext[x][y] = age;
+			}
+		}
+		board = boardNext.slice();
+}
+
+function gameLoop() {
+  if (!running) return;
+  update();
+  render();
+}
+
+window.setInterval(gameLoop, 100);
+
+document.querySelector('#clear').addEventListener('click', clear);
+
+document.querySelector('#play-pause').addEventListener('click', playPause);
+
+
+let drawingMode = 1;
+
+function draw(pixel) {
+  let r = Number(pixel.dataset.r);
+  let c = Number(pixel.dataset.c);
+  board[r][c] = drawingMode;
+  render();
+}
+
+function startDrawing(pixel) {
+  drawingMode = (pixel.className == 'life0') ? 1 : 0;
+  draw(pixel);
+}
+
+pixels.forEach((pixel => {
+  pixel.addEventListener(
+    'mousedown', (e) => {
+      startDrawing(e.target);
+    });
+  pixel.addEventListener(
+    'mouseenter', (e) => {
+      if (e.buttons) draw(e.target);
+    });     
+}));
+      
+    </script>
+  </body>
+</html>
