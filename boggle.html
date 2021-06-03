@@ -1,7 +1,7 @@
 <html>
-  <head><title>Boggle</title>
+  <head><title>Boogle</title>
     <style>
-      body {
+body {
   display: grid;
   grid-template-columns: repeat(3, 300px);  
 }
@@ -11,7 +11,6 @@ section {
   grid-template-rows: repeat(5, 58px);
   margin: 5px;
   user-select: none;
-  -webkit-user-select: none;
 }
 section div {
   width: 48px;
@@ -34,12 +33,13 @@ body > div {
   </head>
   <body>
     
-    
-    <div id="info">
-  <button id="start">Start</button>
+<div id="info">
+  <button id="newgame">New game</button>
+  <button id="startover" disabled="disabled">Start over</button>
   <p>Drag to form words</p>
   <div>Time remaining:</div> <progress id="time" value=0 min=0 max=90></progress>
   <p>Score: <span id="score"></span></p>
+  <p>Previous score: <span id="previousscore"></span></p>
 </div>
 
 <section>
@@ -51,7 +51,6 @@ body > div {
   </ul>
 </div>
     
-    <script src="https://jrobbins.github.io/computer-science/wordlist.js"></script>
     <script>
 // We want "Big boggle"
 const boardSize = 5;
@@ -119,6 +118,7 @@ function scramble(arr) {
 
 let timeRemaining = 0;
 let score = 0;
+let previousScore = null;
 let running = false;
 
 // This is the list of letters that the user has selected.  Each is [r, c].
@@ -169,6 +169,10 @@ function render() {
   document.getElementById('time').value = timeRemaining;
   document.getElementById('score').innerText = score;
   bodyEl.className = running ? 'running' : 'stopped';
+  if (previousScore) {
+    let psEl = document.getElementById('previousscore');
+    psEl.innerText = previousScore;
+  }
 }
 
 // Note: wordList is loaded from a separate .js file.
@@ -188,20 +192,28 @@ function computeScore(word) {
 initializeBoard()
 render();
 
-function startGame() {
+function startOver() {
   timeRemaining = 90;
-  fillBoard();
   initializeSnake();
   yourWords = [];
   while (yourWordsEl.firstChild) {
     yourWordsEl.removeChild(yourWordsEl.firstChild);
   }
+  previousScore = score;
   score = 0;
   running = true;
   render();
+  document.getElementById('startover').disabled = '';
 }
 
-document.getElementById('start').addEventListener('click', startGame);
+function newGame() {
+  fillBoard();  
+  startOver();
+}
+
+document.getElementById('newgame').addEventListener('click', newGame);
+
+document.getElementById('startover').addEventListener('click', startOver);
 
 function gameLoop() {
   if (!running) return;
@@ -262,22 +274,37 @@ function dragLetter(e) {
   }
 }
 
-function finishWord(e) {
-  if (snake.length == 0) return;
-  let word = '';
-  let diceArray = Array.from(dice);
-  for (let rc of snake) {
-    let index = rc[0] * boardSize + rc[1];
-    let die = diceArray[index];
-    word += die.innerText;
-  }
-  word = word.toLowerCase();
+function recordWord(word) {
   let wordScore = computeScore(word);
   score += wordScore;
   yourWords.push(word);
   let newItem = document.createElement('li');
   newItem.innerText = word + ': ' + wordScore;
-  yourWordsEl.appendChild(newItem);
+  yourWordsEl.appendChild(newItem);  
+}
+
+function considerWord(word) {
+  let wordScore = computeScore(word);
+  if (wordScore > 0) {
+    recordWord(word);
+  }
+  return wordScore;
+}
+
+function finishWord(e) {
+  let word = '';
+  let wordScore = 0;
+  let diceArray = Array.from(dice);
+  for (let rc of snake) {
+    let index = rc[0] * boardSize + rc[1];
+    let die = diceArray[index];
+    word += die.innerText.toLowerCase();
+    wordScore = considerWord(word, false);
+  }
+  console.log(wordScore);
+  if (wordScore == 0 && word.length > 2) {
+    recordWord(word);
+  }
   initializeSnake();
 }
 
