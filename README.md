@@ -9,4 +9,5 @@ Simple computer science demos for students
 * https://jrobbins.github.io/computer-science/forth.html
 * https://jrobbins.github.io/computer-science/boggle.html
 * https://jrobbins.github.io/computer-science/life.html
+* https://jrobbins.github.io/computer-science/pacifist-asteroids.html
 
