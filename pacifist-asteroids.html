@@ -1,0 +1,379 @@
+<html>
+  <head><title>Pacifist Asteroids</title>
+    <style>
+body {
+  display: grid;
+  grid-template-columns: 80px auto;  
+  gap: 10px;
+}
+
+canvas {
+  background: #eee;
+}
+
+
+    </style>
+  </head>
+  <body>
+    
+<div>
+  <div><button id=start>Start</button></div>
+  <div>Lives</div>
+  <div id=lives>5</div>
+  <div>Score</div>
+  <div id=score>0</div>
+</div>
+
+<canvas width=800 height=800></canvas>
+
+ <audio id='smash'       src="https://soundbible.com/mp3/Smashing-Yuri_Santana-1233262689.mp3">
+            Your browser does not support the
+            <code>audio</code> element.
+    </audio>
+<audio id='blast'       src="https://soundbible.com/mp3/Blast-SoundBible.com-2068539061.mp3">
+            Your browser does not support the
+            <code>audio</code> element.
+    </audio>
+
+    
+    
+    <script>
+let canvas = document.querySelector('canvas');
+let ctx = canvas.getContext('2d');
+const FRICTION = 0.99;
+const LEFT_CODE = 37, UP_CODE = 38, RIGHT_CODE = 39, DOWN_CODE = 40;
+const LARGE = 2, MEDIUM = 1, SMALL = 0;
+
+const smashEl = document.querySelector('#smash');
+smashEl.volume = 0.3;
+const blastEl = document.querySelector('#blast');
+blastEl.volume = 0.8;
+
+
+const SHIP_POLY = [
+  [0, 0], [-20, 20], [40, 0], [-20, -20]];
+
+const LARGE_ROCK_POLY = [
+  [0, 0], [20, -6], [40, 6], 
+  [60, 0], [50, 35],  
+  [60, 60], [45, 45], [12, 50],
+  [0, 55], [4, 30]];
+
+const MEDIUM_ROCK_POLY = [
+  [0, 0], [12, -3], [25, 4], 
+  [44, -1], [32, 21],  
+  [33, 38], [28, 22], [8, 36],
+  [0, 38], [2, 19]];
+
+const SMALL_ROCK_POLY = [
+  [0, 0], [6, -2], [12, 3], 
+  [18, -1], [18, 14],  
+  [14, 18], [12, 15], [5, 20],
+  [0, 17], [1, 8]];
+
+const ROCK_POLYS = [ 
+  SMALL_ROCK_POLY,
+  MEDIUM_ROCK_POLY, 
+  LARGE_ROCK_POLY,
+];
+
+
+// list of all objects to draw
+let sprites = [];
+// Objects to add or remove on the next turn;
+let newSprites = [], oldSprites = [];
+
+let lives = 0;
+let score = 0;
+let nonviolentTurns = 0;
+let gameLoopId = undefined;
+let perturbance = 0;
+
+class Sprite {
+  constructor(poly, x, y, dx, dy, r, dr) {
+    this.poly = poly; 
+    this.x = x; this.y = y;
+    this.dx = dx || 0; this.dy = dy || 0;
+    this.r = r || 0;  this.dr = dr || 0; // rotation
+    // todo compute w, and h for bbox
+    this.visible = true;
+    this.ignoreCollision = 60;
+  }
+  
+  checkWorldEdges() {
+    if (this.x < 0) this.x = canvas.width; 
+    if (this.x > canvas.width) this.x = 0; 
+    if (this.y < 0) this.y = canvas.height; 
+    if (this.y > canvas.height) this.y = 0; 
+  }
+  
+  overlaps(s) {
+    s.tracePath();
+    for (let p of this.poly) {
+      if (ctx.isPointInPath(this.x + p[0], this.y + p[1])) return true;
+    }
+    return false;
+  }
+    
+  handleCollisionWith(s) {
+    console.log('collision!');  
+  }
+  
+  checkCollisions() {
+    if (this.ignoreCollision > 0) {
+      this.ignoreCollision--;
+      return;
+    }
+    if (!this.visible) return;
+    for (let s of sprites) {
+      if (s === this) continue;
+      if (s.ignoreCollision > 0) continue;
+      if (!s.visible) continue;
+      if (this.overlaps(s)) {
+        this.handleCollisionWith(s);
+        s.handleCollisionWith(this);
+      }
+    }
+  }
+  
+  turn() {
+    if (!this.visible) return;
+    this.x += this.dx;
+    this.y += this.dy;
+    this.r += this.dr;
+    this.checkWorldEdges();
+    this.checkCollisions();
+  }
+  
+  tracePath() {
+    ctx.save();
+    ctx.beginPath();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.r);
+    let p0 = this.poly[0];
+    ctx.moveTo(p0[0], p0[1]);
+    for (let p of this.poly)
+      ctx.lineTo(p[0], p[1]);
+    ctx.lineTo(p0[0], p0[1]);
+    ctx.restore();
+  }
+  
+  draw() {
+    if (!this.visible) return;
+    this.tracePath();
+    if (this.ignoreCollision > 0) {
+      ctx.setLineDash([6, 2]);
+    } else {
+      ctx.setLineDash([]);      
+    }
+    ctx.stroke();
+  }
+}
+
+class Rock extends Sprite {
+  constructor(size, x, y, dx, dy) {
+    super(ROCK_POLYS[size], x, y, dx, dy,
+         0, (Math.random() -.5) / 20);
+    this.size = size;
+  }
+  
+  // Rocks break into smaller rocks.
+  handleCollisionWith(s) {
+    if (!this.visible) return;
+    oldSprites.push(this);
+    this.visible = false;
+    score += (this.size + 1) * 10;
+    let shipDist = Math.sqrt((ship.x - this.x) ** 2 + (ship.y - this.y) ** 2);
+    smashEl.volume = Math.max(0, .3 + this.size / 10 - shipDist / canvas.width);
+    smashEl.play();
+    perturbance += this.size * 3;
+
+    if (this.size > SMALL) {
+      let chunk1 = new Rock(
+        this.size - 1, this.x + 20,
+        this.y + 20, Math.abs(this.dx), 
+        Math.abs(this.dy) + Math.random());
+      let chunk2 = new Rock(
+        this.size - 1, this.x - 20,
+        this.y - 20, -Math.abs(this.dx) - Math.random(), 
+        -Math.abs(this.dy));
+      chunk1.dr = Math.random() / 10;
+      chunk2.dr = -Math.random() / 10;
+      newSprites.push(chunk1);
+      newSprites.push(chunk2);
+    }
+    newSprites.push(new Explosion(this.x, this.y, this.dx, this.dy, 30 + this.size * 20));
+  }
+}
+
+class Ship extends Sprite {
+  constructor() {
+    super(SHIP_POLY, canvas.width / 2, canvas.height / 2);
+  }
+  
+  reset() {
+    this.visible = true;
+    this.x = canvas.width / 2;
+    this.y = canvas.height / 2;
+    this.r = 0;
+    this.dx = 0; this.dy = 0; this.dr = 0;
+    this.ignoreCollision = 60;
+  }
+  
+  turn() {
+    super.turn();
+    this.dx = this.dx * FRICTION;
+    this.dy = this.dy * FRICTION;
+  }
+  
+  handleCollisionWith(s) {
+    super.handleCollisionWith(s);  
+    blastEl.play();
+    perturbance += 10;
+    lives -= 1;
+    this.visible = false;
+    window.setTimeout(function () {
+      ship.reset();
+    }, 1000);
+    newSprites.push(new Explosion(this.x, this.y, this.dx, this.dy, 80));
+  }
+}
+
+class Explosion extends Sprite {
+  constructor(x, y, dx, dy, maxRadius) {
+    super([], x, y, dx / 2, dy / 2);
+    this.radius = 10;
+    this.maxRadius = maxRadius;
+    this.ignoreCollisions = 1000;
+  }
+  
+  turn() {
+    super.turn();
+    this.radius++;
+    if (this.radius > this.maxRadius)
+      oldSprites.push(this);
+  }
+  
+  tracePath() {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, 2* Math.PI);
+    ctx.restore();
+  }
+
+  draw() {
+    if (!this.visible) return;
+    this.tracePath();
+    ctx.fillStyle = 'rgb(180, 180, 180, ' + (1 - this.radius / 100) + ')';
+    ctx.fill();
+  }
+
+}
+
+
+function isGameOver() {
+  return lives <= 0;
+}
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  if (perturbance > 1) {
+    let pX = perturbance * (Math.random() - 0.5);
+    let pY = perturbance * (Math.random() - 0.5);
+    ctx.translate(pX, pY);
+    perturbance--;
+  }
+  for (let s of sprites) {
+    s.draw();
+  }
+  ctx.restore();
+  document.querySelector('#lives').innerText = lives;
+  document.querySelector('#score').innerText = score;
+}
+
+function checkLevelCompletion() {
+  nonviolentTurns++;
+  if (nonviolentTurns > 200) {
+    spawnRocks();
+    nonviolentTurns = 0;
+  }
+}
+
+function mergeSprites() {
+  for (let oldSprite of oldSprites) {
+   sprites.splice(sprites.indexOf(oldSprite), 1);
+    nonviolentTurns = 0;
+  }
+  oldSprites = [];
+  if (newSprites.length < 16)
+    for (let newSprite of newSprites)
+      sprites.push(newSprite);
+  newSprites = [];
+}
+
+function gameLoop() {
+  checkLevelCompletion();
+  mergeSprites();
+  for (let s of sprites) {
+    s.turn();
+  }
+  render();
+  if (isGameOver()) {
+    window.clearInterval(gameLoopId);
+  }    
+}
+
+function spawnRocks() {
+  rock1 = new Rock(LARGE, 60, 60, 1 + Math.random(), 3 * Math.random());
+  rock2 = new Rock(LARGE, canvas.width - 60, 50, Math.random() - 2, 1);
+  rock3 = new Rock(LARGE, 35, canvas.height - 100, 2, Math.random() - 3);
+  rock4 = new Rock(LARGE, canvas.width - 38, canvas.height - 70, -1, -3 + Math.random());
+  newSprites.push(rock1);
+  newSprites.push(rock2);
+  newSprites.push(rock3);
+  newSprites.push(rock4);
+}
+
+function init() {
+  lives = 5;
+  score = 0;
+  // add sprites
+  ship = new Ship();
+  sprites = [ship];
+  spawnRocks();
+  mergeSprites();
+}
+
+function start() {
+  window.clearInterval(gameLoopId);
+  init();
+  gameLoopId = window.setInterval(gameLoop, 50);
+}
+
+
+function turnCCW() {
+  ship.r -= 0.1;
+}
+function turnCW() {
+  ship.r += 0.1;
+}
+function thrust() {
+  let t = 2;  // amount of thrust
+  let tx = t * Math.cos(ship.r);
+  let ty = t * Math.sin(ship.r);
+  ship.dx += tx;
+  ship.dy += ty;
+}
+
+document.querySelector('#start').addEventListener('click', start);
+
+document.querySelector('body').addEventListener('keydown', (e) => {
+  if (e.key == 'a' || e.keyCode == LEFT_CODE) turnCCW();
+  if (e.key == 'd' || e.keyCode == RIGHT_CODE) turnCW();
+  if (e.key == 'w' || e.keyCode == UP_CODE) thrust();
+});
+
+    </script>
+  </body>
+</html>
