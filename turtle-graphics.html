@@ -1,0 +1,151 @@
+<html>
+  <head><title>Turtle Graphics</title>
+    <style>
+      canvas { background: #eee; }
+    </style>
+  </head>
+  <body>
+    <canvas width="800" height="250"></canvas>
+<div>
+  <button id="diamond">Diamond</button>
+  <button id="person">Person</button>
+  <button id="first">First</button>
+</div>
+    
+    <script>
+const canvas = document.querySelector('canvas');
+const ctx = canvas.getContext('2d');
+const black = 'black', red = 'red', green =' green', blue = 'blue', white = 'white', purple = 'purple', organge = 'orange';
+
+function runButtonCode(func){
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  isPenDown = true;
+  ctx.strokeStyle = black;
+ctx.translate(canvas.width / 2, canvas.height / 2);  
+  ctx.moveTo(0, 0);
+  func();
+  ctx.restore();
+}
+
+let isPenDown = true;
+let currentColor = 'black';
+
+function penDown() { isPenDown = true; }
+function penUp() { isPenDown = false; }
+function pen(color) {currentColor = color;}
+
+function turnRight(deg) {
+  ctx.rotate(deg * Math.PI / 180);
+}
+function rt(deg) { turnRight(deg); }
+
+function turnLeft(deg) {
+  ctx.rotate(-deg * Math.PI / 180);
+}
+function lt(deg) { turnLeft(deg); }
+
+function forward(dist) {
+  ctx.beginPath();
+  ctx.translate(0, -dist);
+  ctx.moveTo(0, 0);
+  ctx.strokeStyle = currentColor;
+  if (isPenDown) {
+    ctx.lineTo(0, dist);
+  }
+  ctx.stroke();
+}
+function fd(dist){forward(dist);}
+
+function backward(dist) {
+  forward(-dist);
+}
+function bk(dist){backward(dist);}
+
+function move(x, y) {
+  ctx.translate(x, -y);
+  ctx.moveTo(0, 0);
+}
+
+function dot(diameter, color) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.strokeStyle = color || currentColor;
+  ctx.fillStyle = color || currentColor;
+  ctx.arc(0, 0, diameter / 2, 0, 2 * Math.PI);
+  ctx.fill();
+  ctx.restore();
+}
+
+function repeat(n, func) {
+  for (let i = 0; i < n; i++)
+    func();
+}
+
+function diamond() {
+  pen(red);
+  move(20, 10);
+  turnLeft(45);
+  repeat(4, () => {
+    forward(40);  
+    turnRight(90);
+    dot(4, blue);
+    pen(green);
+  });
+}
+
+// These are examples that my kids made when
+// they were little using pencilcode.net.
+
+function person() {
+  move(-100, -100);
+  pen(black);
+  rt(45);
+  fd(100)
+  rt(90);
+  fd(100);
+  penUp();
+  bk(100);
+  penDown();
+  lt(45+90);
+  fd(100);
+  lt(90);
+  fd(15);
+  lt(90);
+  fd(60);
+  penUp();
+  bk(60);
+  rt(90);
+  bk(15);
+  rt(180);
+  penDown();
+  fd(15);
+  rt(90);
+  fd(60);
+  lt(90 + 60);
+  fd(50);
+  penUp();
+  move(-52, 15);
+  dot(35, black);
+}
+
+function first() {
+  pen(red);
+  repeat(25, () => {
+    fd(100);
+    rt(88);
+  });
+}
+
+document.querySelector('#diamond').addEventListener('click', (e) => runButtonCode(diamond))
+
+document.querySelector('#person').addEventListener('click', (e) => runButtonCode(person))
+
+document.querySelector('#first').addEventListener('click', (e) => runButtonCode(first))
+
+runButtonCode(diamond);
+
+      
+    </script>
+  </body>
+</html>
