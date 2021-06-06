@@ -170,11 +170,42 @@ class Sprite {
   }
 }
 
+function polarToCartesian(polar) {
+  return {
+    dx: polar.speed * Math.cos(polar.radians),
+    dy: polar.speed * Math.sin(polar.radians),
+  }
+}
+
+function cartesianToPolar(dx, dy) {
+  return {
+    speed: Math.sqrt(dx**2 + dy**2),
+    radians: Math.atan2(dy, dx),
+  }
+}
+
 class Rock extends Sprite {
   constructor(size, x, y, dx, dy) {
     super(ROCK_POLYS[size], x, y, dx, dy,
          0, (Math.random() -.5) / 20);
     this.size = size;
+  }
+  
+  split() {
+    let polar = cartesianToPolar(this.dx, this.dy);
+    polar.radians += Math.PI;  // opposite direction
+    let polar1 = {speed: polar.speed, radians: polar.radians - 1};
+    let polar2 = {speed: polar.speed, radians: polar.radians + 1};
+    let cart1 = polarToCartesian(polar1);
+    let cart2 = polarToCartesian(polar2);
+    let chunk1 = new Rock(
+        this.size - 1, this.x, this.y, cart1.dx, cart1.dy);
+    let chunk2 = new Rock(
+        this.size - 1, this.x, this.y, cart2.dx, cart2.dy);
+    chunk1.dr = Math.random() / 10;
+    chunk2.dr = -Math.random() / 10;
+    newSprites.push(chunk1);
+    newSprites.push(chunk2);
   }
   
   // Rocks break into smaller rocks.
@@ -188,23 +219,12 @@ class Rock extends Sprite {
     smashEl.play();
     perturbance += this.size * 3;
 
-    if (this.size > SMALL) {
-      let chunk1 = new Rock(
-        this.size - 1, this.x + 20,
-        this.y + 20, Math.abs(this.dx), 
-        Math.abs(this.dy) + Math.random());
-      let chunk2 = new Rock(
-        this.size - 1, this.x - 20,
-        this.y - 20, -Math.abs(this.dx) - Math.random(), 
-        -Math.abs(this.dy));
-      chunk1.dr = Math.random() / 10;
-      chunk2.dr = -Math.random() / 10;
-      newSprites.push(chunk1);
-      newSprites.push(chunk2);
-    }
+    if (this.size > SMALL)
+      this.split();
     newSprites.push(new Explosion(this.x, this.y, this.dx, this.dy, 30 + this.size * 20));
   }
 }
+
 
 class Ship extends Sprite {
   constructor() {
