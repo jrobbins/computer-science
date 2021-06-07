@@ -1,0 +1,424 @@
+<html>
+  <head><title><Space War/title>
+    <style>
+      body {
+  display: grid;
+  grid-template-columns: 140px auto;  
+  gap: 10px;
+}
+
+canvas {
+  background: #eee;
+}
+
+label {
+  display: block;
+  margin-top: 30px;
+}
+    </style>
+  </head>
+  <body>
+ <div>
+  <div><button id=start>Start</button></div>
+  <div style="margin-top:1em;">Red</div>
+  <div id=red_victories>0 victories</div>
+  <div>Keys: w, a, s, d</div>
+  <div style="margin-top:1em;">Blue</div>
+  <div id=blue_victories>0 victories</div>
+  <div>Keys: arrow keys</div>
+
+  <label>
+    Gravity
+    <input type="range" id="gravity" 
+            min="-1000" max="1000" value="300" />
+  </label>
+  <label>
+    Bullet range
+    <input type="range" id="bullet_range" 
+            min="20" max="100" value="60" />
+  </label>
+  <label>
+    Bullet speed
+    <input type="range" id="bullet_speed" 
+            min="1" max="10" value="3" />
+  </label>
+  <label>
+    Bullet scatter
+    <input type="range" id="bullet_scatter" 
+            min="0" max="7" value="3.5" step="0.1" />
+  </label>
+</div>
+
+<canvas width=800 height=600></canvas>
+
+
+ <audio id='smash'       src="https://soundbible.com/mp3/Smashing-Yuri_Santana-1233262689.mp3">
+            Your browser does not support the
+            <code>audio</code> element.
+    </audio>
+<audio id='blast'       src="https://soundbible.com/mp3/Blast-SoundBible.com-2068539061.mp3">
+            Your browser does not support the
+            <code>audio</code> element.
+    </audio>
+
+   
+    
+    <script>
+let canvas = document.querySelector('canvas');
+let ctx = canvas.getContext('2d');
+const FRICTION = 1;  // no friction
+const MAX_SPEED = 100;
+const LEFT_CODE = 37, UP_CODE = 38, RIGHT_CODE = 39, DOWN_CODE = 40;
+
+const SHIP_POLY = [
+  [0, 0], [-10, 10], [20, 0], [-10, -10]];
+const BULLET_POLY = [[0, 0], [4, 8], [8, 4]]
+const SUN_POLY = [
+  [0, 0], [10, -5], [20, 0], [25, 10], [20, 20], [10, 25], [0, 20], [-5, 10]];
+
+
+const smashEl = document.querySelector('#smash');
+smashEl.volume = 0.3;
+const blastEl = document.querySelector('#blast');
+blastEl.volume = 0.8;
+
+
+
+// list of all objects to draw
+let sprites = [];
+// Objects to add or remove on the next turn;
+let newSprites = [], oldSprites = [];
+
+let redVictories = 0, blueVictories = 0;
+let perturbance = 0;
+let gravity = 300;
+let bulletRange = 60;
+let bulletSpeed = 3, bulletScatter = 2.5;
+let sun = null;  // filled in below
+
+function polarToCartesian(polar) {
+  return {
+    dx: polar.speed * Math.cos(polar.radians),
+    dy: polar.speed * Math.sin(polar.radians),
+  }
+}
+
+function cartesianToPolar(dx, dy) {
+  return {
+    speed: Math.sqrt(dx**2 + dy**2),
+    radians: Math.atan2(dy, dx),
+  }
+}
+
+class Sprite {
+  constructor(poly, x, y, dx, dy, r, dr) {
+    this.poly = poly; 
+    this.x = x; this.y = y;
+    this.dx = dx || 0; this.dy = dy || 0;
+    this.r = r || 0;  this.dr = dr || 0; // rotation
+    // todo compute w, and h for bbox
+    this.visible = true;
+    this.ignoreCollision = 60;
+  }
+  
+  checkWorldEdges() {
+    if (this.x < 0) this.x = canvas.width; 
+    if (this.x > canvas.width) this.x = 0; 
+    if (this.y < 0) this.y = canvas.height; 
+    if (this.y > canvas.height) this.y = 0; 
+  }
+  
+  overlaps(s) {
+    s.tracePath();
+    for (let p of this.poly) {
+      if (ctx.isPointInPath(this.x + p[0], this.y + p[1])) return true;
+    }
+    return false;
+  }
+    
+  handleCollisionWith(s) {
+    console.log('collision!');  
+  }
+  
+  checkCollisions() {
+    if (this.ignoreCollision > 0) {
+      this.ignoreCollision--;
+      return;
+    }
+    if (!this.visible) return;
+    for (let s of sprites) {
+      if (s === this) continue;
+      if (s.ignoreCollision > 0) continue;
+      if (!s.visible) continue;
+      if (this.overlaps(s)) {
+        this.handleCollisionWith(s);
+        s.handleCollisionWith(this);
+      }
+    }
+  }
+  
+  turn() {
+    if (!this.visible) return;
+    this.x += this.dx;
+    this.y += this.dy;
+    this.r += this.dr;
+    this.checkWorldEdges();
+    this.checkCollisions();
+    if (sun && this !== sun) {
+      let sunVector = cartesianToPolar(sun.x - this.x, sun.y - this.y);
+      let gravVector = {
+        speed: gravity / sunVector.speed ** 2, 
+        radians: sunVector.radians };
+      let gravAccel = polarToCartesian(gravVector);
+      this.dx += gravAccel.dx;
+      this.dy += gravAccel.dy;
+    }
+  }
+  
+  tracePath() {
+    ctx.save();
+    ctx.beginPath();
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.r);
+    let p0 = this.poly[0];
+    ctx.moveTo(p0[0], p0[1]);
+    for (let p of this.poly)
+      ctx.lineTo(p[0], p[1]);
+    ctx.lineTo(p0[0], p0[1]);
+    ctx.restore();
+  }
+  
+  draw() {
+    if (!this.visible) return;
+    this.tracePath();
+    if (this.ignoreCollision > 0) {
+      ctx.setLineDash([6, 2]);
+    } else {
+      ctx.setLineDash([]);      
+    }
+    if (this.playerColor)
+      ctx.strokeStyle = this.playerColor;
+    ctx.stroke();
+  }
+}
+
+
+class Bullet extends Sprite {
+  constructor(playerColor, x, y, dx, dy) {
+    super(BULLET_POLY, x, y, dx, dy,
+         0, (Math.random() -0.5));
+    this.playerColor = playerColor;
+    this.ignoreCollision = 0;
+    this.timeToLive = bulletRange;
+  }
+  
+  turn() {
+    super.turn();
+    this.timeToLive--;
+    if (this.timeToLive <0)
+      oldSprites.push(this);
+  }
+  
+  handleCollisionWith(s) {
+    if (s.playerColor == this.playerColor) return;
+    super.handleCollisionWith(s); 
+    oldSprites.push(this);
+  }
+}
+
+class Ship extends Sprite {
+  constructor(playerColor) {
+    super(SHIP_POLY, 0, 0);
+    this.playerColor = playerColor;
+    this.reset();
+  }
+  
+  reset() {
+    this.visible = true;
+    this.dx = 0; this.dy = 0; this.dr = 0;
+    this.ignoreCollision = 60;
+    if (this.playerColor == 'red') {
+      this.x = 100; this.y = canvas.height / 2; this.r = 0;
+    }
+    else {
+      this.x = canvas.width - 100; this.y = canvas.height / 2; this.r = Math.PI;
+    }
+  }
+  
+  turn() {
+    super.turn();
+    this.dx = this.dx * FRICTION;
+    this.dy = this.dy * FRICTION;
+  }
+  
+  handleCollisionWith(s) {
+    if (s.playerColor == this.playerColor) return;
+    super.handleCollisionWith(s);  
+    blastEl.play();
+    perturbance += 10;
+    if (this.playerColor == 'red')
+      blueVictories++;
+    else
+      redVictories++;
+    this.visible = false;
+    window.setTimeout(() => {
+      this.reset();
+    }, 1000);
+    newSprites.push(new Explosion(this.x, this.y, this.dx, this.dy, 80));
+  }
+}
+
+class Explosion extends Sprite {
+  constructor(x, y, dx, dy, maxRadius) {
+    super([], x, y, dx / 2, dy / 2);
+    this.radius = 10;
+    this.maxRadius = maxRadius;
+    this.ignoreCollisions = 1000;
+  }
+  
+  turn() {
+    super.turn();
+    this.radius += 5;
+    if (this.radius > this.maxRadius)
+      oldSprites.push(this);
+  }
+  
+  tracePath() {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, 2* Math.PI);
+    ctx.restore();
+  }
+
+  draw() {
+    if (!this.visible) return;
+    this.tracePath();
+    ctx.fillStyle = 'rgb(180, 180, 180, ' + (1 - this.radius / 100) + ')';
+    ctx.fill();
+  }
+
+}
+
+
+function render() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  if (perturbance > 1) {
+    let pX = perturbance * (Math.random() - 0.5);
+    let pY = perturbance * (Math.random() - 0.5);
+    ctx.translate(pX, pY);
+    perturbance--;
+  }
+  for (let s of sprites) {
+    s.draw();
+  }
+  ctx.restore();
+  document.querySelector('#red_victories').innerText = redVictories + ' victories';
+  document.querySelector('#blue_victories').innerText = blueVictories + ' victories';
+}
+
+
+function mergeSprites() {
+  for (let oldSprite of oldSprites) {
+   sprites.splice(sprites.indexOf(oldSprite), 1);
+    nonviolentTurns = 0;
+  }
+  oldSprites = [];
+  if (newSprites.length < 16)
+    for (let newSprite of newSprites)
+      sprites.push(newSprite);
+  newSprites = [];
+}
+
+function gameLoop() {
+  mergeSprites();
+  for (let s of sprites) {
+    s.turn();
+  }
+  render();
+}
+
+sun = new Sprite(SUN_POLY, canvas.width / 2, canvas.height / 2, 0, 0, 0.3);
+sun.playerColor = 'orange';
+const redShip = new Ship('red');
+const blueShip = new Ship('blue');
+
+function init() {
+  // add sprites
+  sprites = [redShip, blueShip, sun];
+}
+
+function start() {
+  init();
+  window.setInterval(gameLoop, 50);
+}
+
+
+function turnCCW(ship) {
+  ship.r -= 0.1;
+}
+function turnCW(ship) {
+  ship.r += 0.1;
+}
+function thrust(ship) {
+  if (ship.dx > MAX_SPEED || ship.dy > MAX_SPEED) return;
+  let t = 2;  // amount of thrust
+  let tx = t * Math.cos(ship.r);
+  let ty = t * Math.sin(ship.r);
+  ship.dx += tx;
+  ship.dy += ty;
+}
+function shoot(ship) {
+  console.log('fire torpedo')
+  const SHIP_LENGTH = 20;
+  let speed = bulletSpeed;
+  let bulletDx = speed * Math.cos(ship.r) + Math.random() * bulletScatter - bulletScatter / 2;
+  let bulletDy = speed * Math.sin(ship.r) + Math.random() * bulletScatter - bulletScatter / 2;
+  let bullet = new Bullet(
+    ship.playerColor, 
+    ship.x + SHIP_LENGTH * Math.cos(ship.r), ship.y + SHIP_LENGTH * Math.sin(ship.r), 
+    ship.dx + bulletDx, ship.dy + bulletDy);
+  newSprites.push(bullet);
+}
+
+
+document.querySelector('#start').addEventListener('click', (e) => {
+  e.target.disabled = 'disabled';
+  start();
+});
+
+document.querySelector('body').addEventListener('keydown', (e) => {
+  if (e.key == 'a') turnCCW(redShip);
+  if (e.key == 'd') turnCW(redShip);
+  if (e.key == 'w') thrust(redShip);
+  if (e.key == 's') shoot(redShip);
+
+  if (e.keyCode == LEFT_CODE) turnCCW(blueShip);
+  if (e.keyCode == RIGHT_CODE) turnCW(blueShip);
+  if (e.keyCode == UP_CODE) thrust(blueShip);
+  if (e.keyCode == DOWN_CODE) shoot(blueShip);
+});
+
+document.querySelector('#gravity').addEventListener(
+  'change', (e) => {
+    gravity = Number(e.target.value);
+    e.target.blur();});
+
+document.querySelector('#bullet_range').addEventListener(
+  'change', (e) => {
+    bulletRange = Number(e.target.value);
+    e.target.blur();});
+
+document.querySelector('#bullet_speed').addEventListener(
+  'change', (e) => {
+    bulletSpeed = Number(e.target.value);
+    e.target.blur();});
+
+document.querySelector('#bullet_scatter').addEventListener(
+  'change', (e) => {
+    bulletScatter = Number(e.target.value);
+    e.target.blur();});
+      
+    </script>
+  </body>
+</html>
