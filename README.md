@@ -11,4 +11,5 @@ Simple computer science demos for students
 * https://jrobbins.github.io/computer-science/life.html
 * https://jrobbins.github.io/computer-science/pacifist-asteroids.html
 * https://jrobbins.github.io/computer-science/turtle-graphics.html
+* https://jrobbins.github.io/computer-science/space-war.html
 
