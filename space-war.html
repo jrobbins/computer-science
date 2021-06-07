@@ -45,7 +45,7 @@ label {
   <label>
     Bullet scatter
     <input type="range" id="bullet_scatter" 
-            min="0" max="7" value="3.5" step="0.1" />
+            min="0" max="7" value="2.0" step="0.1" />
   </label>
 </div>
 
@@ -93,8 +93,10 @@ let redVictories = 0, blueVictories = 0;
 let perturbance = 0;
 let gravity = 300;
 let bulletRange = 60;
-let bulletSpeed = 3, bulletScatter = 2.5;
+let bulletSpeed = 3, bulletScatter = 2.0;
 let sun = null;  // filled in below
+
+let redKey = null, blueKey = null;
 
 function polarToCartesian(polar) {
   return {
@@ -331,6 +333,7 @@ function mergeSprites() {
 }
 
 function gameLoop() {
+  processKeys();
   mergeSprites();
   for (let s of sprites) {
     s.turn();
@@ -369,7 +372,7 @@ function thrust(ship) {
   ship.dy += ty;
 }
 function shoot(ship) {
-  console.log('fire torpedo')
+  if (!ship.visible) return;
   const SHIP_LENGTH = 20;
   let speed = bulletSpeed;
   let bulletDx = speed * Math.cos(ship.r) + Math.random() * bulletScatter - bulletScatter / 2;
@@ -381,22 +384,33 @@ function shoot(ship) {
   newSprites.push(bullet);
 }
 
+function processKeys() {
+  if (redKey == 'a') turnCCW(redShip);
+  if (redKey == 'd') turnCW(redShip);
+  if (redKey == 'w') thrust(redShip);
+  if (redKey == 's') shoot(redShip);
+
+  if (blueKey == LEFT_CODE) turnCCW(blueShip);
+  if (blueKey == RIGHT_CODE) turnCW(blueShip);
+  if (blueKey == UP_CODE) thrust(blueShip);
+  if (blueKey == DOWN_CODE) shoot(blueShip);
+}
+
 
 document.querySelector('#start').addEventListener('click', (e) => {
   e.target.disabled = 'disabled';
   start();
 });
 
-document.querySelector('body').addEventListener('keydown', (e) => {
-  if (e.key == 'a') turnCCW(redShip);
-  if (e.key == 'd') turnCW(redShip);
-  if (e.key == 'w') thrust(redShip);
-  if (e.key == 's') shoot(redShip);
 
-  if (e.keyCode == LEFT_CODE) turnCCW(blueShip);
-  if (e.keyCode == RIGHT_CODE) turnCW(blueShip);
-  if (e.keyCode == UP_CODE) thrust(blueShip);
-  if (e.keyCode == DOWN_CODE) shoot(blueShip);
+document.querySelector('body').addEventListener('keydown', (e) => {
+  if (e.key == 'a' || e.key == 'd' || e.key == 'w' || e.key == 's') redKey = e.key;
+  if (e.keyCode == LEFT_CODE || e.keyCode == RIGHT_CODE || e.keyCode == UP_CODE || e.keyCode == DOWN_CODE) blueKey = e.keyCode;
+});
+
+document.querySelector('body').addEventListener('keyup', (e) => {
+  if (e.key == 'a' || e.key == 'd' || e.key == 'w' || e.key == 's') redKey = null;
+  if (e.keyCode == LEFT_CODE || e.keyCode == RIGHT_CODE || e.keyCode == UP_CODE || e.keyCode == DOWN_CODE) blueKey = null;
 });
 
 document.querySelector('#gravity').addEventListener(
@@ -418,6 +432,7 @@ document.querySelector('#bullet_scatter').addEventListener(
   'change', (e) => {
     bulletScatter = Number(e.target.value);
     e.target.blur();});
+
       
     </script>
   </body>
