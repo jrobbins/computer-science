@@ -369,6 +369,12 @@ function start() {
   window.clearInterval(gameLoopId);
   init();
   gameLoopId = window.setInterval(gameLoop, 50);
+  // Safari only allows playing of audio if it is first played during a user-initiated event.
+  for (let audio of document.querySelectorAll('audio') {
+    audio.play();
+    audio.pause();
+    audio.currentTime = 0;
+  }
 }
 
 
