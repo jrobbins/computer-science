@@ -1,0 +1,153 @@
+<html>
+  <head><title>Circle and Rectangle Intersection</title>
+    <style>
+canvas {
+  background: #eee;
+}
+    </style>
+  </head>
+  <body>
+  <canvas width=800 height=400></canvas>   
+    
+    <script>
+const canvas = document.querySelector('canvas');
+const ctx = canvas.getContext('2d');
+
+let selectedObject = null;
+
+
+class Sprite {
+  constructor(top, left, width, height) {
+    this.top= top; this.left = left;
+    this.width = width; this.height = height;
+  }
+  right() { return this.left + this.width; }
+  bottom() { return this.top + this.height; }
+  
+  moveTo(x, y) {
+    this.left = x;
+    this.top = y; 
+  }
+  
+  containsMouse(x, y) {
+    return (this.top < y && y < this.top + this.height &&
+           this.left < x && x < this.left + this.width);
+  }
+}
+
+class Rect extends Sprite {
+  // no need to have constructor.
+  
+  draw() {
+    ctx.beginPath();
+    ctx.fillStyle = 'rgba(50, 50, 205, .6)';
+    ctx.rect(this.left, this.top,  this.width, this.height);
+    ctx.fill();
+    if (selectedObject == this) {
+      ctx.strokeStyle = 'black';
+      ctx.stroke();
+    }
+  }
+}
+
+class Circle extends Sprite {
+  constructor(centerX, centerY, radius) {
+    super(centerY - radius, centerX - radius, 2 * radius, 2* radius);
+    this.radius = radius;
+  }
+  
+  centerX() { return this.left + this.width / 2; }
+  centerY() { return this.top + this.height / 2; }
+  
+  draw() {
+    ctx.beginPath();
+    ctx.moveTo(this.centerX() + this.radius, this.centerY());
+    ctx.arc(this.centerX(), this.centerY(), this.radius, 0, 2 * Math.PI);
+    ctx.fillStyle = 'rgba(100, 205, 100, .6)';
+    if (connector.dist < this.radius) {
+      ctx.fillStyle = 'rgba(205, 100, 100, .6)';
+      
+    }
+    ctx.fill();
+    if (selectedObject == this) { 
+      ctx.strokeStyle = 'black';
+      ctx.stroke();
+    }
+  }
+}
+
+function clamp(val, low, high) {
+  if (val < low) return low;
+  if (val > high) return high;
+  return val;
+}
+
+
+class CenterConnector {
+  constructor() {
+    this.nearestX = 0;
+    this.nearestY = 0;
+    this.dist = 0;
+  }
+  
+  update() {
+    this.nearestX = clamp(circle.centerX(), rect.left, rect.right());
+    this.nearestY = clamp(circle.centerY(), rect.top, rect.bottom());
+    this.dist = Math.sqrt( (this.nearestX - circle.centerX()) ** 2 + 
+                           (this.nearestY - circle.centerY()) ** 2);
+  }
+  
+  draw() {
+    ctx.beginPath();
+    ctx.strokeStyle = 'red';
+    ctx.fillStyle = 'red';
+    ctx.moveTo(this.nearestX, this.nearestY);
+    ctx.arc(this.nearestX, this.nearestY, 3, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.lineTo(circle.centerX(), circle.centerY());
+    ctx.stroke();
+    ctx.arc(circle.centerX(), circle.centerY(), 3, 0, 2*Math.PI);
+    ctx.fill();
+    ctx.font = '18px sans-serif';
+    ctx.fillText('' + Math.floor(this.dist), 
+                 (this.nearestX + circle.centerX()) / 2 + 20,
+                 (this.nearestY + circle.centerY()) / 2 + 20);
+  }
+}
+
+const rect = new Rect(40, 40, 100, 75);
+const circle = new Circle(280, 70, 60);
+const connector = new CenterConnector();
+
+
+function gameLoop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  rect.draw();
+  circle.draw();
+  connector.update();
+  connector.draw();
+}
+
+window.setInterval(gameLoop, 100);
+
+let gripX = 0, gripY = 0;
+canvas.addEventListener('mousedown', (e) => {
+  selectedObject = null;
+  for (let sprite of [circle, rect]) {
+    if (sprite.containsMouse(e.x, e.y)) { 
+      selectedObject = sprite;
+      gripX = e.x - sprite.left;
+      gripY = e.y - sprite.top;
+    }
+  } 
+})
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!e.buttons) return;
+  if (selectedObject == null) return;
+  selectedObject.moveTo(e.x - gripX, e.y - gripY);
+})
+      
+    </script>
+  </body>
+</html>
