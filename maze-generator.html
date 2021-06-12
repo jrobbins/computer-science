@@ -1,0 +1,211 @@
+  <html>
+  <head><title>Maze generator</title>
+    <style>
+section {
+  display: grid;
+  grid-template-columns: repeat(41, 12px);
+  grid-template-rows: repeat(41, 12px);
+  cursor: pointer;
+}
+div {
+  width: 10px;
+  height: 10px;
+  background: lightgrey;
+}
+
+div.black { background: black; }
+    </style>
+  </head>
+  <body>
+    
+<span id="msg">Random Maze</span>
+<section>
+  <!-- 41x41 empty div elements will be added here. -->
+</section>
+
+<p>Click and drag to draw.</p>
+<button id="clear">Clear to all white</button>
+<button id="fill">Fill with all black</button>
+<button id="make_maze_recur">Make maze (recursive)</button>
+<button id="make_maze_iter">Make maze (iterative)</button>
+    
+    <script>
+const boardSize = 41;
+const mazeSize = 20;
+
+// Create the HTML elmements
+let sectionEl = document.querySelector("section");
+for (let r=0; r<boardSize; r++)
+  for (let c=0; c<boardSize; c++) {
+    let newDiv = document.createElement('div');
+    newDiv.dataset.r = r;
+    newDiv.dataset.c = c;    sectionEl.appendChild(newDiv);
+}
+let pixels = document.querySelectorAll('section div');
+let running = false;
+
+// Board is  matrix of pixels that start with desired color
+let board = [];
+function initializeBoard(color) {
+  board = [];
+  for (let r=0; r<boardSize; r++) {
+    let row = [];
+    board.push(row);
+    for (let c=0; c<boardSize; c++) {
+      row.push(color);
+    }
+  }
+}
+
+function render() {
+  let i = 0;
+  for (pixel of pixels) {
+    let r = Math.floor(i / boardSize);
+    let c = i % boardSize
+    pixel.className = board[r][c];
+    i++;
+  }
+}
+
+function fillBoard(color) {
+  initializeBoard(color);
+  render();
+}
+
+fillBoard('white');
+
+const NORTH = {dx: 0, dy: -2};
+const SOUTH = {dx: 0, dy: 2};
+const EAST = {dx: -2, dy: 0};
+const WEST = {dx: 2, dy: 0};
+
+function findAllNeighbors(cellXY) {
+  let result = [];
+  for (let direction of [NORTH, SOUTH, EAST, WEST]) {
+      let neighborX = cellXY.x + direction.dx;
+      let neighborY = cellXY.y + direction.dy;
+      result.push({x: neighborX, y: neighborY});
+    }
+  return result;
+}
+
+function pickRandomItem(list) {
+  let index = Math.floor(Math.random() * list.length);
+  // Cut out a sublist starting at index with length 1.
+  let itemInAList = list.splice(index, 1);
+  return itemInAList[0]; // just return the single item
+}
+
+function visitRecursive(cellXY) {
+  // The maze cell that we are visiting is now part of the maze.
+  board[cellXY.x][cellXY.y] = 'white';
+  
+  let neighborCells = findAllNeighbors(cellXY);
+  while (neighborCells.length) {
+    let potentialNeighbor = pickRandomItem(neighborCells);
+    // If the potential neighbor is in the bounds of the board and not already part of the maze, choose it.
+    if (board[potentialNeighbor.x] && 
+        board[potentialNeighbor.x][potentialNeighbor.y] == 'black') {
+      // Remove the wall between this cell and the next cell.
+      board[(cellXY.x + potentialNeighbor.x) / 2][(cellXY.y + potentialNeighbor.y) / 2] = 'white';
+      // Make that next cell part of the maze and keep going
+      visitRecursive(potentialNeighbor);
+    }
+  }
+  render();
+}
+
+function makeMazeRecursive() {
+  initializeBoard('black');
+  visitRecursive({x: 1, y: 1});
+  console.log('done');
+  render();
+}
+
+// These are cellXY values that are in the unexplored area, but adjacent to the explored area
+let frontier = [];
+
+function visitIterative(cellXY) {
+  // Add this cell to the maze.
+  if (board[cellXY.x][cellXY.y] == 'black') {
+    board[cellXY.x][cellXY.y] = 'white';
+    // Connect it to the part of the existing maze that spawned it.
+    if (cellXY.connectionX) {
+      board[cellXY.connectionX][cellXY.connectionY] = 'white';    
+    }
+  }
+  
+  // Any unexplored adjacent cells are now added to the list of frontiers.
+  for (let direction of [NORTH, SOUTH, EAST, WEST]) {
+    let neighborX = cellXY.x + direction.dx;
+    let neighborY = cellXY.y + direction.dy;
+    if (board[neighborX] && board[neighborX][neighborY] == 'black') {
+      frontier.push({
+        x: neighborX,
+        y: neighborY,
+        connectionX: (cellXY.x + neighborX) / 2,
+        connectionY: (cellXY.y + neighborY) / 2,
+      });
+      // Prevent us from adding the same cell to the frontier again.
+      board[neighborX][neighborY] == 'frontier';
+    }
+  }
+}
+
+function makeMazeIterative() {
+  initializeBoard('black');
+  visitIterative({x: 1, y: 1});
+  while (frontier.length) {
+    let frontierCell = pickRandomItem(frontier);
+    visitIterative(frontierCell);
+  }
+  console.log('done');
+  render();
+}
+
+
+
+document.querySelector('#clear').addEventListener('click', (e) => fillBoard('white'));
+document.querySelector('#fill').addEventListener('click', (e) => fillBoard('black'));
+document.querySelector('#make_maze_recur').addEventListener('click', makeMazeRecursive);
+document.querySelector('#make_maze_iter').addEventListener('click', makeMazeIterative);
+
+//document.querySelector('#play-pause').addEventListener('click', playPause);
+
+function gameLoop() {
+  //if (!running) return;
+  //update();
+  render();
+}
+
+window.setInterval(gameLoop, 100);
+
+
+let drawingMode = 'black';
+
+function draw(pixel) {
+  let r = Number(pixel.dataset.r);
+  let c = Number(pixel.dataset.c);
+  board[r][c] = drawingMode;
+  render();
+}
+
+function startDrawing(pixel) {
+  drawingMode = (pixel.className == 'black') ? 'white' : 'black';
+  draw(pixel);
+}
+
+pixels.forEach((pixel => {
+  pixel.addEventListener(
+    'mousedown', (e) => {
+      startDrawing(e.target);
+    });
+  pixel.addEventListener(
+    'mouseenter', (e) => {
+      if (e.buttons) draw(e.target);
+    });     
+}));
+  
+    </script>
+  </body>
+</html>
