@@ -14,4 +14,6 @@ Simple computer science demos for students
 * https://jrobbins.github.io/computer-science/space-war.html
 * https://jrobbins.github.io/computer-science/maze-generator.html
 * https://jrobbins.github.io/computer-science/circle-vs-rectangle.html
+* https://jrobbins.github.io/computer-science/tetris.html
+* https://jrobbins.github.io/computer-science/columns.html
 
