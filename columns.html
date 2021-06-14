@@ -1,0 +1,381 @@
+<html>
+  <head><title>Columns</title>
+    <style>
+body {
+  display: grid;
+  grid-template-columns: 150px auto 200px;  
+  gap: 10px;
+}
+
+section {
+  margin: 10px;
+  display: grid;
+  cursor: pointer;
+}
+section div {
+  width: 19px;
+  height: 19px;
+}
+#board div {
+  background: lightgrey;
+}
+
+#board {
+  grid-template-columns: repeat(10, 20px);
+  grid-template-rows: repeat(20, 20px);
+}
+
+#nextPiece {
+  grid-template-columns: repeat(4, 20px);
+  grid-template-rows: repeat(4, 20px);
+}
+
+button { margin-bottom: 20px;}
+
+div.blu { background: blue !important; }
+div.ora { background: darkorange !important; }
+div.gre { background: green !important; }
+div.pur { background: purple !important; }
+div.cyn { background: darkcyan !important; }
+div.yel { background: goldenrod !important; }
+div.red { background: red !important; }
+
+div.blink { border: 2px solid black; }
+
+
+    </style>
+  </head>
+  <body>
+<div>
+  <h1>Columns</h1>
+  <button id="start">Start</button>
+  <div>Score</div>
+  <div id=score>0</div>
+  <p id=message></p>
+</div>
+
+<section id=board>
+  <!-- 20x10 empty div elements will be added here. -->
+</section>
+
+<div>
+  Next Piece:
+<section id=nextPiece>
+  <!-- 4x4 empty div elements will be added here. -->
+</section>
+</div>
+
+    
+    
+    <script>
+const LEFT_CODE = 37, UP_CODE = 38, RIGHT_CODE = 39, DOWN_CODE = 40;
+
+const BOARD_WIDTH = 10, BOARD_HEIGHT = 20;
+
+const RGB = {
+  width: 1, height: 3,
+  cells: [['red'], ['blu'], ['gre']],
+};
+const GBY = {
+  width: 1,
+  height: 3,
+  cells: [['gre'], ['blu'], ['yel']],
+};
+const BYO = {
+  width: 1,
+  height: 3,
+  cells: [['blu'], ['yel'], ['ora']],
+};
+const OYR = {
+  width: 1,
+  height: 3,
+  cells: [['yel'], ['ora'], ['red']],
+};
+const YOB = {
+  width: 1,
+  height: 3,
+  cells: [['yel'], ['ora'], ['blu']],
+};
+const OBG = {
+  width: 1,
+  height: 3,
+  cells: [['ora'], ['blu'], ['gre']],
+};
+
+
+
+const PIECES = 
+      [RGB, GBY, OYR, YOB, OBG, BYO];
+
+
+let currentPiece, nextPiece;
+let score = 0, message = '';
+
+
+// Create the HTML elements
+let nextPieceArea = document.querySelector("#nextPiece");
+for (let r=0; r<4; r++)
+  for (let c=0; c<4; c++) {
+    let newDiv = document.createElement('div');
+    newDiv.dataset.r = r;
+    newDiv.dataset.c = c;
+    nextPieceArea.appendChild(newDiv);
+}
+let nextPiecePixelList = document.querySelectorAll('#nextPiece div');
+
+
+let boardArea = document.querySelector("#board");
+for (let r=0; r<BOARD_HEIGHT; r++)
+  for (let c=0; c<BOARD_WIDTH; c++) {
+    let newDiv = document.createElement('div');
+    newDiv.dataset.r = r;
+    newDiv.dataset.c = c;
+    boardArea.appendChild(newDiv);
+}
+let pixelList = document.querySelectorAll('#board div');
+let pixels = [];
+
+let pixelListIndex = 0;
+for (let r = 0; r<BOARD_HEIGHT; r++)
+  pixels.push([]);
+for (pixel of pixelList) {
+  let r = Math.floor(pixelListIndex / BOARD_WIDTH);
+  pixels[r].push(pixel);
+  pixelListIndex++;
+}
+
+
+let running = false;
+
+// Board is  matrix of pixels that start with no color.
+// The board only holds pieces that have landed, not the currently falling piece.
+let board = [];
+function initializeBoard() {
+  board = [];
+  for (let r=0; r<BOARD_HEIGHT; r++) {
+    let row = [];
+    board.push(row);
+    for (let c=0; c<BOARD_WIDTH; c++) {
+      row.push('');
+    }
+  }
+}
+
+function render() {
+  for (let r=0; r<BOARD_HEIGHT; r++)
+    for (let c=0; c<BOARD_WIDTH; c++)
+      pixels[r][c].className = board[r][c];
+  
+  if (currentPiece) {
+    for (let r=0; r<currentPiece.height; r++)
+      for (let c=0; c<currentPiece.width; c++) {
+        if (currentPiece.cells[r][c])
+          pixels[r + currentPiece.y][c + currentPiece.x].className = currentPiece.cells[r][c];
+      }
+  }
+  
+  if (nextPiece) {
+    let idx = 0;
+    for (let r=0; r<4; r++)
+      for (let c=0; c<4; c++) {
+        nextPiecePixelList[idx].className = (
+          (nextPiece.cells[r] && nextPiece.cells[r][c]) || '');
+        idx++;
+      }
+  }
+  
+  
+  document.querySelector('#score').innerText = score;
+  document.querySelector('#message').innerText = message;
+  
+}
+
+initializeBoard();
+render();
+
+const NORTH = {dx: 0, dy: -2};
+const SOUTH = {dx: 0, dy: 2};
+const EAST = {dx: -2, dy: 0};
+const WEST = {dx: 2, dy: 0};
+
+
+let turnLength = 700;
+
+
+function startNewPiece() {
+  currentPiece = nextPiece;
+  nextPiece = PIECES[Math.floor(Math.random() * PIECES.length)];
+  // Copy all the parts of the peice so that we can modify it.
+  currentPiece = JSON.parse(JSON.stringify(currentPiece));
+  currentPiece.x = Math.floor(BOARD_WIDTH / 2) - 2;
+  currentPiece.y = 0;
+}
+
+render();
+
+function rotatePiece(tempPiece) {
+  newCells = [[tempPiece.cells[2][0]],
+              [tempPiece.cells[0][0]],
+              [tempPiece.cells[1][0]]];
+  tempPiece.cells = newCells;
+}
+
+// Would the falling piece be in conflict if it was at this location?
+function hasConflict(tempPiece) {
+  for (let r=0; r<tempPiece.height; r++)
+    for (let c=0; c<tempPiece.width; c++) {
+      if (tempPiece.cells[r][c] == '') continue;
+      // check world boundaries
+      if (tempPiece.y + r >= BOARD_HEIGHT) return true;
+      if (tempPiece.x + c < 0 || tempPiece.x + c >= BOARD_WIDTH) return true;
+      // check previously landed pieces
+      if (board[tempPiece.y + r][tempPiece.x + c]) return true;
+    }
+  return false;  
+}
+
+function isLanded() {
+  let tempPiece = JSON.parse(JSON.stringify(currentPiece));
+  tempPiece.y++;
+  return hasConflict(tempPiece);
+}
+
+function addPieceToBoard() {
+  for (let r=0; r<currentPiece.height; r++)
+    for (let c=0; c<currentPiece.width; c++) {
+      if (currentPiece.cells[r][c] == '') continue;
+      board[currentPiece.y + r][currentPiece.x + c] = currentPiece.cells[r][c];
+    }
+  score += 10;
+}
+
+
+function compact() {
+  // move everything down as far as possible into any empty cells.
+  for (let c=0; c<BOARD_WIDTH; c++) {
+    let lowestOpenRow = null;
+    for (let r=BOARD_HEIGHT - 1; r>1; r--) {
+      if (board[r][c] == '' && lowestOpenRow == null) {
+        lowestOpenRow = r;
+        continue;
+      }
+      if (lowestOpenRow) {
+        board[lowestOpenRow][c] = board[r][c];
+        board[r][c] = '';
+        lowestOpenRow = r;
+      }
+    }
+  }
+}
+
+function checkMatch(r, c, dr, dc, cellsToRemove) {
+  if (board[r] && board[r][c]) {
+    let color = board[r][c];
+    if (board[r+dr] && board[r+dr][c+dc] == color &&
+       board[r+2*dr] && board[r+2*dr][c+2*dc] == color) {
+      cellsToRemove.push({r: r, c: c});
+      cellsToRemove.push({r: r + dr, c: c + dc});
+      cellsToRemove.push({r: r + 2 * dr, c: c + 2 * dc});
+    }
+  }
+}
+
+function findAndRemoveMatches() {
+  let cellsToRemove = [];
+  for (let r=0; r < BOARD_HEIGHT; r++) {
+    for (let c=0; c < BOARD_WIDTH; c++) {
+      checkMatch(r, c, 1, 0, cellsToRemove);
+      checkMatch(r, c, 0, 1, cellsToRemove);
+      checkMatch(r, c, 1, 1, cellsToRemove);
+      checkMatch(r, c, 1, -1, cellsToRemove);
+    }
+  }
+  score += cellsToRemove.length ** 2 * 100;
+  turnLength = Math.max(250, turnLength - Math.floor(cellsToRemove.length / 3));
+  for (let cell of cellsToRemove)
+    board[cell.r][cell.c] = '';
+  if (cellsToRemove) compact();
+}
+
+function gameOver() {
+  running = false;
+  message = 'Game over';
+  currentPiece = null;
+  render();
+}
+
+function update() {
+  if (isLanded()) {
+    addPieceToBoard();
+    findAndRemoveMatches();
+    startNewPiece();
+    if (hasConflict(currentPiece)) gameOver();
+  } else {
+    // apply gravity
+    currentPiece.y++;
+  }
+}
+
+
+function gameLoop() {
+  if (!running) return;
+  update();
+  render();
+  window.setTimeout(gameLoop, turnLength);
+}
+
+function start() {
+  running = true;
+  nextPiece = PIECES[Math.floor(Math.random() * PIECES.length)];
+  startNewPiece();
+  initializeBoard();
+  gameLoop();
+  message = 'Greetings!';
+}
+
+
+function moveLeft() {
+  let tempPiece = JSON.parse(JSON.stringify(currentPiece));
+  tempPiece.x--;
+  if (!hasConflict(tempPiece)) {
+    currentPiece.x--;
+    render();
+  }
+}
+
+function moveRight() {
+  let tempPiece = JSON.parse(JSON.stringify(currentPiece));
+  tempPiece.x++;
+  if (!hasConflict(tempPiece)) {
+    currentPiece.x++;
+    render();
+  }
+}
+
+function rotate() {
+  let tempPiece = JSON.parse(JSON.stringify(currentPiece));
+  rotatePiece(tempPiece);
+  if (!hasConflict(tempPiece)) {
+    rotatePiece(currentPiece);
+    render();
+  }
+}
+
+function advance() {
+  update();
+  render();
+}
+
+document.querySelector('#start').addEventListener('click', start);
+document.addEventListener('keydown', (e) => {
+   if (!running) return;
+   if (e.keyCode == LEFT_CODE) moveLeft();
+   if (e.keyCode == RIGHT_CODE) moveRight();
+   if (e.keyCode == UP_CODE) rotate();
+   if (e.keyCode == DOWN_CODE) advance();
+});
+
+      
+    </script>
+  </body>
+</html>
