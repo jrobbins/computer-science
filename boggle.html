@@ -11,7 +11,6 @@ section {
   grid-template-rows: repeat(5, 58px);
   margin: 5px;
   user-select: none;
-  -webkit-user-select: none;
 }
 section div {
   width: 48px;
@@ -30,6 +29,15 @@ body > div {
   padding: 30px;
 }
 #info button { margin-bottom: 10px;}
+
+#your-words {
+  display: grid;
+  grid-template-columns: repeat(6, 120px);  
+}
+.overtime {
+  color: #a22;
+}
+
     </style>
   </head>
   <body>
@@ -48,8 +56,20 @@ body > div {
 </section>
 
 <div>Your words:
-  <ul id=yourwords>
+ <div id="your-words">
+  <ul id="score-1">
   </ul>
+  <ul id="score-2">
+  </ul>
+  <ul id="score-3">
+  </ul>
+  <ul id="score-more">
+  </ul>
+  <ul id="score-0">
+  </ul>
+  <ul id="score-overtime">
+  </ul>
+ </div>
 </div>
   
     <script src="https://jrobbins.github.io/computer-science/wordlist.js"></script>
@@ -128,6 +148,7 @@ let snake = [];
 
 // This is a list of strings for the good and bad words that the user has made.
 let yourWords = [];
+let wordScores = [];
 
 // Board is 4x4 matrix of random letters
 let board = [];
@@ -162,24 +183,43 @@ function initializeSnake() {
     delete die.dataset.idx;})  
 }
 
-function render() {
+function renderAtStart() {
   let i = 0;
   for (die of dice) {
     die.innerText = board[die.dataset.r][die.dataset.c];
     i++;
-  }
-  document.getElementById('time').value = timeRemaining;
-  document.getElementById('score').innerText = score;
-  bodyEl.className = running ? 'running' : 'stopped';
+  }  
   if (previousScore) {
     let psEl = document.getElementById('previousscore');
     psEl.innerText = previousScore;
   }
 }
 
+function render() {
+  document.getElementById('time').value = timeRemaining;
+  document.getElementById('score').innerText = score;
+  bodyEl.className = running ? 'running' : 'stopped';
+
+  document.querySelectorAll('#your-words ul').forEach(scoreColumnEl => {
+    while (scoreColumnEl.firstChild) {
+      scoreColumnEl.removeChild(scoreColumnEl.firstChild);
+    }
+  });
+  for (let ws of wordScores) {
+    let wordItem = document.createElement('li');
+    let word = ws[0];  let wordScore = ws[1]; let overtime = ws[2];
+    wordItem.innerText = word + ': ' + wordScore;
+    if (wordScore == 'dup') wordScore = 0;
+    let scoreColumnID = '#score-' + (wordScore >= 4 ? 'more' : wordScore);
+    let scoreColumnEl = document.querySelector(scoreColumnID);
+    scoreColumnEl.appendChild(wordItem);
+    if (overtime) wordItem.className = 'overtime';
+  }
+}
+
 // Note: wordList is loaded from a separate .js file.
 function computeScore(word) {
-  if (yourWords.includes(word)) return 0;
+  if (yourWords.includes(word)) return 'dup';
   if (word.length < 3) return 0;
   let valid = false;
   if (wordList.includes(word)) valid = true;
@@ -192,19 +232,17 @@ function computeScore(word) {
  }
 
 initializeBoard()
-render();
+renderAtStart();
 
 function startOver() {
   timeRemaining = 90;
   initializeSnake();
   yourWords = [];
-  while (yourWordsEl.firstChild) {
-    yourWordsEl.removeChild(yourWordsEl.firstChild);
-  }
   previousScore = score;
   score = 0;
+  bestWordScore = 0;
   running = true;
-  render();
+  renderAtStart();
   document.getElementById('startover').disabled = '';
 }
 
@@ -224,9 +262,6 @@ function gameLoop() {
   }
   if (timeRemaining <= 0) {
     running = false;
-    let divider = document.createElement('li');
-    divider.innerText = '-- TIME EXPIRED --'
-    yourWordsEl.appendChild(divider);
   }
   render();
 }
@@ -278,16 +313,16 @@ function dragLetter(e) {
 
 function recordWord(word) {
   let wordScore = computeScore(word);
-  score += wordScore;
+  if (wordScore != 'dup')
+    score += wordScore;
   yourWords.push(word);
-  let newItem = document.createElement('li');
-  newItem.innerText = word + ': ' + wordScore;
-  yourWordsEl.appendChild(newItem);  
+  wordScores.push([word, wordScore, timeRemaining <= 0]);
+  render();
 }
 
 function considerWord(word) {
   let wordScore = computeScore(word);
-  if (wordScore > 0) {
+  if (wordScore > 0 || wordScore == 'dup') {
     recordWord(word);
   }
   return wordScore;
@@ -303,7 +338,6 @@ function finishWord(e) {
     word += die.innerText.toLowerCase();
     wordScore = considerWord(word, false);
   }
-  console.log(wordScore);
   if (wordScore == 0 && word.length > 2) {
     recordWord(word);
   }
