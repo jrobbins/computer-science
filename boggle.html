@@ -238,6 +238,7 @@ function startOver() {
   timeRemaining = 90;
   initializeSnake();
   yourWords = [];
+  wordScores = [];
   previousScore = score;
   score = 0;
   bestWordScore = 0;
@@ -322,7 +323,7 @@ function recordWord(word) {
 
 function considerWord(word) {
   let wordScore = computeScore(word);
-  if (wordScore > 0 || wordScore == 'dup') {
+  if (wordScore > 0) {
     recordWord(word);
   }
   return wordScore;
@@ -338,7 +339,7 @@ function finishWord(e) {
     word += die.innerText.toLowerCase();
     wordScore = considerWord(word, false);
   }
-  if (wordScore == 0 && word.length > 2) {
+  if ((wordScore == 0 || wordScore == 'dup') && word.length > 2) {
     recordWord(word);
   }
   initializeSnake();
