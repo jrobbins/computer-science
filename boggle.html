@@ -314,7 +314,7 @@ function dragLetter(e) {
 
 function recordWord(word) {
   let wordScore = computeScore(word);
-  if (wordScore != 'dup')
+  if (wordScore != 'dup' && timeRemaining > 0)
     score += wordScore;
   yourWords.push(word);
   wordScores.push([word, wordScore, timeRemaining <= 0]);
