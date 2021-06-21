@@ -3,20 +3,21 @@
     <style>
 body {
   display: grid;
-  grid-template-columns: repeat(3, 300px);  
+  grid-template-columns: 250px 340px auto;
+  touch-action: none;
 }
 section {
   display: grid;
-  grid-template-columns: repeat(5, 58px);
-  grid-template-rows: repeat(5, 58px);
+  grid-template-columns: repeat(5, 72px);
+  grid-template-rows: repeat(5, 72px);
   margin: 5px;
   user-select: none;
 }
 section div {
-  width: 48px;
-  height: 48px;
+  width: 58px;
+  height: 58px;
   background: #ddd;
-  font-size: 36px;
+  font-size: 46px;
   text-align: center;
 }
 .stopped section div {
@@ -277,6 +278,7 @@ function pushSnake(die) {
 }
 
 function startLetter(e) {
+  e.target.releasePointerCapture(e.pointerId);
   if (snake.length > 0) {
     initializeSnake();
   }
@@ -285,7 +287,7 @@ function startLetter(e) {
 }
 
 function dragLetter(e) {
-  if (!e.buttons) return;
+  if (e.pointerType == 'mouse' && !e.buttons) return;
   let die = e.target;
   let idx = die.dataset.idx;
   if (idx === undefined) {
@@ -342,14 +344,16 @@ function finishWord(e) {
   if ((wordScore == 0 || wordScore == 'dup') && word.length > 2) {
     recordWord(word);
   }
-  initializeSnake();
+  initializeSnake();;
 }
 
 dice.forEach((die) => {
-  die.addEventListener('mousedown',  startLetter);
-  die.addEventListener('mouseenter',  dragLetter);
-  die.addEventListener('mouseup',  finishWord);
+  die.addEventListener('pointerdown',  startLetter);
+  die.addEventListener('pointerenter',  dragLetter);
+  die.addEventListener('pointerup',  finishWord);
 });
+
+
 
 
     </script>
