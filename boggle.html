@@ -51,6 +51,7 @@ body > div {
   <div>Time remaining:</div> <progress id="time" value=0 min=0 max=90></progress>
   <p>Score: <span id="score"></span></p>
   <p>Previous score: <span id="previousscore"></span></p>
+  <p>Max. posible score: <span id="possiblescore"></span></p>
 </div>
 
 <section>
@@ -78,6 +79,12 @@ body > div {
     <script>
 // We want "Big boggle"
 const boardSize = 5;
+const wordSet = new Set(wordList);
+const wordPrefixes = new Set();
+for (let w of wordList) {
+  for (let i = 1; i < w.length; i++)
+    wordPrefixes.add(w.slice(0, i));
+}
 
 // Create the HTML elmements
 let sectionEl = document.querySelector("section");
@@ -144,6 +151,8 @@ let timeRemaining = 0;
 let score = 0;
 let previousScore = null;
 let running = false;
+let possibleScore = 0;
+
 
 // This is the list of letters that the user has selected.  Each is [r, c].
 let snake = [];
@@ -200,6 +209,8 @@ function renderAtStart() {
 function render() {
   document.getElementById('time').value = timeRemaining;
   document.getElementById('score').innerText = score;
+  document.getElementById('possiblescore').innerText = possibleScore;
+
   bodyEl.className = running ? 'running' : 'stopped';
 
   document.querySelectorAll('#your-words ul').forEach(scoreColumnEl => {
@@ -224,12 +235,49 @@ function computeScore(word) {
   if (yourWords.includes(word)) return 'dup';
   if (word.length < 3) return 0;
   let valid = false;
-  if (wordList.includes(word)) valid = true;
+  if (wordSet.has(word)) valid = true;
   if (!valid) return 0;
   if (word.length == 3) return 1;
   if (word.length >= 8) return 11;
   return word.length - 3;
  }
+
+function visit(r, c, wordSoFar, visitedRC, foundWords) {
+  if (!board[r] || !board[r][c]) return 0;
+  let rc = r + ',' + c;
+  if (visitedRC.has(rc)) return 0;
+  wordSoFar += board[r][c].toLowerCase();
+  let wordScore = computeScore(wordSoFar);
+  if (wordScore) {
+    foundWords.add(wordSoFar);
+  }
+  if (wordPrefixes.has(wordSoFar)) {
+    visitedRC.add(rc);
+    visit(r-1, c-1, wordSoFar, visitedRC, foundWords);
+    visit(r-1, c, wordSoFar, visitedRC, foundWords);
+    visit(r-1, c+1, wordSoFar, visitedRC, foundWords);
+    visit(r, c-1, wordSoFar, visitedRC, foundWords);
+    visit(r, c+1, wordSoFar, visitedRC, foundWords);
+    visit(r+1, c-1, wordSoFar, visitedRC, foundWords);
+    visit(r+1, c, wordSoFar, visitedRC, foundWords);
+    visit(r+1, c+1, wordSoFar, visitedRC, foundWords);
+    visitedRC.delete(rc);
+  }
+  return foundWords;
+}
+
+function findAllWords() {
+  let foundWords = new Set();
+  for (let r=0; r<boardSize; r++) {
+    for (let c=0; c<boardSize; c++) {
+      visit(r, c, '', new Set(), foundWords);      
+    }
+  }
+  possibleScore = 0;
+  for (let w of foundWords) possibleScore += computeScore(w);
+  console.log(foundWords);
+  return foundWords;
+}
 
 initializeBoard()
 renderAtStart();
@@ -248,7 +296,8 @@ function startOver() {
 }
 
 function newGame() {
-  fillBoard();  
+  fillBoard();
+  findAllWords();
   startOver();
 }
 
