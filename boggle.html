@@ -225,8 +225,6 @@ function computeScore(word) {
   if (word.length < 3) return 0;
   let valid = false;
   if (wordList.includes(word)) valid = true;
-  if (word[word.length - 1] == 's' &&
-     wordList.includes(word.slice(0, word.length-1))) valid = true;
   if (!valid) return 0;
   if (word.length == 3) return 1;
   if (word.length >= 8) return 11;
@@ -345,7 +343,7 @@ function finishWord(e) {
   if ((wordScore == 0 || wordScore == 'dup') && word.length > 2) {
     recordWord(word);
   }
-  initializeSnake();;
+  initializeSnake();
 }
 
 dice.forEach((die) => {
@@ -353,8 +351,6 @@ dice.forEach((die) => {
   die.addEventListener('pointerenter',  dragLetter);
   die.addEventListener('pointerup',  finishWord);
 });
-
-
 
 
     </script>
