@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
-import {LitElement, html, css} from 'lit';
+import {LitElement, html, css} from 'https://unpkg.com/lit-element@2.2.1/lit-element.js?module'
 
 /**
  * An example element.
