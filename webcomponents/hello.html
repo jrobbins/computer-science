@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <script src="https://unpkg.com/@webcomponents/webcomponentsjs@2.0.0/custom-elements-es5-adapter.js"></script>
+    <script src="https://unpkg.com/@webcomponents/webcomponentsjs@2.0.0/webcomponents-bundle.js"></script>
+    <script type="module">
+      import { LitElement, css, html } from 'https://unpkg.com/lit-element@2.2.1/lit-element.js?module'
+
+      class SimpleGreeting extends LitElement {
+        static get styles() {
+          return css`
+            .color-red { color: red }
+            .color-blue { color: blue }
+          `
+        }
+
+        static get properties() {
+          return {
+            message: { type: String },
+            class: { type: String }
+          }
+        }
+
+        async load() {
+          this.message = `Hello, World!`
+        }
+
+        async connectedCallback() {
+          super.connectedCallback()
+          this.message = 'Loading...'
+          await this.load()
+        }
+
+        onClick() {
+          this.class = 'color-blue'
+        }
+
+        constructor() {
+          super()
+          this.message = ''
+          this.class = 'color-red'
+          this.addEventListener('click', this.onClick)
+        }
+
+        render() {
+          return html`<p class="${this.class}">${this.message}</p>`
+        }
+      }
+
+      window.customElements.define('simple-greeting', SimpleGreeting)
+    </script>
+    <title>LitElement Example</title>
+  </head>
+
+  <body>
+    <simple-greeting></simple-greeting>
+  </body>
+</html>
