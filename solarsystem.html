@@ -1,0 +1,164 @@
+<html>
+  <head>
+    <title>Solar system simulator</title>
+    
+    <style>
+#space {
+  width: 800px;
+  height: 800px;
+  background: black;
+}
+
+.planet {
+  border-radius: 50%;
+  width: 10px;
+  height: 10px;
+  color: red;
+  text-align: center;
+  vertical-align: middle;
+  background: lightblue;
+  position: absolute;
+}
+
+#sun {
+  background: radial-gradient(circle at 40% 40%, white 0, yellow, orange 100%);
+}  
+    </style>
+    
+    <script>
+const numInitialObjs = 70;
+const space = document.querySelector('#space')
+const G = 14;
+const spaceSize = 800;
+
+const sun = document.createElement('div');
+sun.className = 'planet'; sun.id = 'sun';
+sun.m = 500000;
+sun.x = spaceSize / 2;
+sun.y = spaceSize / 2;
+sun.vx = 0;
+sun.vy = 0;
+sun.style.top = sun.y + 'px';
+sun.style.left = sun.x + 'px';
+sun.dia = 60;
+sun.style.width = sun.dia + 'px';
+sun.style.height = sun.dia + 'px';
+
+function chooseColor() {
+  const colors = ['pink', 'lightblue', 'lightgreen', 'gray', 'orange', 'violet', 'white', 'lightgray', 'red', 'orangered', 'ivory', 'darkgray', 'purple', 'blue', 'cyan', 'magenta'];
+  const idx = Math.floor(Math.random() * colors.length);
+  return colors[idx];
+}
+
+for (let i = 0; i < numInitialObjs; i++) {
+  let obj = document.createElement('div');
+  obj.className = 'planet';
+  obj.style.background = `radial-gradient(circle at 40% 40%, white 0, ${chooseColor()},  ${chooseColor()} 100%)`;
+  obj.m = 5000 + Math.random() * 1000;
+  obj.x = 100 + Math.random() * (spaceSize - 200);
+  obj.y = 100 + Math.random() * (spaceSize - 200);
+  obj.vx = -.6 * (sun.y - obj.y);
+  obj.vy = .6 * (sun.x - obj.x);
+  obj.dia = 10;
+  obj.style.top = obj.y + 'px';
+  obj.style.left = obj.x + 'px';
+  space.appendChild(obj);
+}
+
+space.appendChild(sun);
+
+function moveWithGravity(dt, o) {  // "o" refers to Array of objects we are moving
+    for (let o1 of o) {  // Zero-out accumulator of forces for each object
+        o1.fx = 0;
+        o1.fy = 0;
+    }
+    for (let i = 0; i < o.length; i++) {  // For each pair of objects...
+        const o1 = o[i];
+        for (let j=0; j < o.length; j++) {
+            const o2 = o[j];
+            if (i < j) {  // To not do same pair twice
+                let dx = o2.x - o1.x;  // Compute distance between centers of objects
+                let dy = o2.y - o1.y;
+                let r = Math.sqrt(Math.pow(dx, 2) + Math.pow(dy, 2));
+                if (r < 30) {  // To avoid division by 0
+                    r = 30;
+                }
+                // Compute force for this pair; k = 1000
+                let f = (10 * o1.m * o2.m) / Math.pow(r, 2);
+                let fx = f * dx / r;  // Break it down into components
+                let fy = f * dy / r;
+                o1.fx += fx;  // Accumulate for first object
+                o1.fy += fy;
+                o2.fx -= fx;  // And for second object in opposite direction
+                o2.fy -= fy;
+            }
+        }
+    }
+    for (let o1 of o) {  // for each object update...
+        let ax = o1.fx / o1.m;  // ...acceleration
+        let ay = o1.fy / o1.m;
+
+        o1.vx += ax * dt;  // ...speed
+        o1.vy += ay * dt;
+
+        o1.x += o1.vx * dt;  // ...position
+        o1.y += o1.vy * dt;;
+    }
+}
+
+function doCollisions(objs) {
+  const removals = [];
+  for (let i = 0; i < objs.length; i++) {  // For each pair of objects...
+    let oi = objs[i];
+    for (let j = 0; j < objs.length; j++) {
+      if (i >= j) continue;
+      let oj = objs[j];
+      let dx = oi.x - oj.x;  // Compute distance between centers of objects
+      let dy = oi.y - oj.y;
+      let r2 = Math.pow(dx, 2) + Math.pow(dy, 2);
+      let sizes2 = Math.pow(oi.dia, 2) + Math.pow(oj.dia, 2);
+      if (r2 * 4 < sizes2) {
+        let lgr = oi, smr = oj;
+        if (oi.m < oj.m) {
+          lgr = oj, smr = oi;
+        }
+        const mx = lgr.vx * lgr.m + smr.vx * smr.m
+        const my = lgr.vy * smr.m + smr.vy * smr.m;
+        lgr.m += smr.m;
+        lgr.vx = mx / lgr.m;
+        lgr.vy = my / lgr.m;
+        removals.push(smr);
+      }
+    }
+  }  
+  return removals;
+}
+
+function sim() {
+  let objs = document.querySelectorAll('.planet');
+  moveWithGravity(0.02, objs);
+  removals = doCollisions(objs);
+  for (let rm of removals) {
+    space.removeChild(rm);
+  }
+  objs = document.querySelectorAll('.planet');
+  sun.x = spaceSize / 2;
+  sun.y = spaceSize / 2;
+  for (let i = 0; i < objs.length; i++) {  // For each pair of objects...
+    let ob = objs[i];
+     if (ob !== sun) ob.dia = 15 + ob.m / 3000;
+    ob.style.top = ob.y - ob.dia/2 + 'px';
+    ob.style.left = ob.x - ob.dia/2 + 'px';
+    ob.style.width = ob.dia + 'px';
+    ob.style.height = ob.dia + 'px';
+    ob.style.zIndex = Math.floor(ob.y);
+  }
+}
+
+setInterval(sim, 30);
+    </script>
+  </head>
+  <body>
+    <div id=space></div>
+  </body>
+</html>
