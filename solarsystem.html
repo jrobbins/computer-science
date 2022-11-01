@@ -128,7 +128,7 @@ function doCollisions(objs) {
           lgr = oj, smr = oi;
         }
         const mx = lgr.vx * lgr.m + smr.vx * smr.m
-        const my = lgr.vy * smr.m + smr.vy * smr.m;
+        const my = lgr.vy * lgr.m + smr.vy * smr.m;
         lgr.m += smr.m;
         lgr.vx = mx / lgr.m;
         lgr.vy = my / lgr.m;
