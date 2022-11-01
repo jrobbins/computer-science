@@ -16,4 +16,5 @@ Simple computer science demos for students
 * https://jrobbins.github.io/computer-science/circle-vs-rectangle.html
 * https://jrobbins.github.io/computer-science/tetris.html
 * https://jrobbins.github.io/computer-science/columns.html
+* https://jrobbins.github.io/computer-science/solarsystem.html
 
