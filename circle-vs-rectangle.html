@@ -13,36 +13,62 @@ canvas {
 const canvas = document.querySelector('canvas');
 const ctx = canvas.getContext('2d');
 
-let selectedObject = null;
+let selectedObject = null; // Stores the object currently being dragged, or null if none.
 
-
+/**
+ * Base class for drawable objects (sprites) on the canvas.
+ * Handles position, dimensions, and basic interactions like mouse containment.
+ */
 class Sprite {
+  /**
+   * Creates a Sprite instance.
+   * @param {number} top - Y-coordinate of the top edge.
+   * @param {number} left - X-coordinate of the left edge.
+   * @param {number} width - Width of the sprite.
+   * @param {number} height - Height of the sprite.
+   */
   constructor(top, left, width, height) {
     this.top= top; this.left = left;
-    this.width = width; this.height = height;
+    this.width = width;   // Width of the sprite
+    this.height = height; // Height of the sprite
   }
+
+  /** Calculates the X-coordinate of the right edge. */
   right() { return this.left + this.width; }
+  /** Calculates the Y-coordinate of the bottom edge. */
   bottom() { return this.top + this.height; }
-  
+
+  /** Moves the sprite's top-left corner to the specified canvas coordinates. */
   moveTo(x, y) {
     this.left = x;
-    this.top = y; 
+    this.top = y;
   }
-  
+
+  /**
+   * Checks if the given canvas coordinates (x, y) are inside the sprite's bounds.
+   * @param {number} x - The X-coordinate to check.
+   * @param {number} y - The Y-coordinate to check.
+   * @returns {boolean} True if the point is inside, false otherwise.
+   */
   containsMouse(x, y) {
     return (this.top < y && y < this.top + this.height &&
            this.left < x && x < this.left + this.width);
   }
 }
 
+/**
+ * Represents a rectangle sprite. Inherits from Sprite.
+ */
 class Rect extends Sprite {
-  // no need to have constructor.
-  
+  // Inherits constructor and basic properties from Sprite.
+
+  /** Draws the rectangle on the canvas. Highlights with a black border if selected. */
   draw() {
     ctx.beginPath();
-    ctx.fillStyle = 'rgba(50, 50, 205, .6)';
-    ctx.rect(this.left, this.top,  this.width, this.height);
+    ctx.fillStyle = 'rgba(50, 50, 205, .6)'; // Blue fill
+    ctx.rect(this.left, this.top, this.width, this.height);
     ctx.fill();
+    // Draw black border if the rectangle is the selected object.
     if (selectedObject == this) {
       ctx.strokeStyle = 'black';
       ctx.stroke();
@@ -50,103 +76,189 @@ class Rect extends Sprite {
   }
 }
 
+/**
+ * Represents a circle sprite. Inherits from Sprite.
+ */
 class Circle extends Sprite {
+  /**
+   * Creates a Circle instance.
+   * @param {number} centerX - X-coordinate of the circle's center.
+   * @param {number} centerY - Y-coordinate of the circle's center.
+   * @param {number} radius - Radius of the circle.
+   */
   constructor(centerX, centerY, radius) {
-    super(centerY - radius, centerX - radius, 2 * radius, 2* radius);
+    // Calculate top-left position for the bounding box required by Sprite constructor.
+    // The bounding box width/height is 2 * radius.
+    super(centerY - radius, centerX - radius, 2 * radius, 2 * radius);
     this.radius = radius;
   }
-  
+
+  /** Calculates the X-coordinate of the circle's center based on its bounding box. */
   centerX() { return this.left + this.width / 2; }
+  /** Calculates the Y-coordinate of the circle's center based on its bounding box. */
   centerY() { return this.top + this.height / 2; }
-  
+
+  /**
+   * Draws the circle on the canvas.
+   * Changes fill color to red if intersecting with the rectangle (distance < radius).
+   * Highlights with a black border if selected.
+   */
   draw() {
     ctx.beginPath();
+    // Start drawing arc from the rightmost point (angle 0) for a full circle.
     ctx.moveTo(this.centerX() + this.radius, this.centerY());
     ctx.arc(this.centerX(), this.centerY(), this.radius, 0, 2 * Math.PI);
+
+    // Default fill style (greenish)
     ctx.fillStyle = 'rgba(100, 205, 100, .6)';
+    // Change fill style to reddish if the circle intersects the rectangle.
+    // Intersection occurs if the distance to the nearest point on the rectangle
+    // (calculated by CenterConnector) is less than the circle's radius.
     if (connector.dist < this.radius) {
-      ctx.fillStyle = 'rgba(205, 100, 100, .6)';
-      
+      ctx.fillStyle = 'rgba(205, 100, 100, .6)'; // Reddish fill for intersection
     }
     ctx.fill();
-    if (selectedObject == this) { 
+
+    // Draw black border if the circle is the selected object.
+    if (selectedObject == this) {
       ctx.strokeStyle = 'black';
       ctx.stroke();
     }
   }
 }
 
+/**
+ * Clamps a value between a minimum (low) and maximum (high) value.
+ * @param {number} val The value to clamp.
+ * @param {number} low The minimum allowed value.
+ * @param {number} high The maximum allowed value.
+ * @returns {number} The clamped value.
+ */
 function clamp(val, low, high) {
   if (val < low) return low;
   if (val > high) return high;
   return val;
 }
 
-
+/**
+ * Calculates and visualizes the connection between the circle's center
+ * and the nearest point on the rectangle's perimeter.
+ * This is used for collision detection (distance < circle radius).
+ */
 class CenterConnector {
   constructor() {
-    this.nearestX = 0;
-    this.nearestY = 0;
-    this.dist = 0;
+    this.nearestX = 0; // X-coordinate of the nearest point on the rectangle to the circle's center.
+    this.nearestY = 0; // Y-coordinate of the nearest point on the rectangle to the circle's center.
+    this.dist = 0;     // Distance between the circle's center and the nearest point on the rectangle.
   }
-  
+
+  /**
+   * Updates the nearest point coordinates (nearestX, nearestY) and the distance (dist).
+   * It clamps the circle's center coordinates to the bounds of the rectangle
+   * to find the nearest point on the rectangle's perimeter.
+   * Then, it calculates the Euclidean distance between the circle center and this nearest point.
+   */
   update() {
+    // Find the closest point on the rectangle's perimeter to the circle's center.
+    // Clamp the circle's center X to the rectangle's left/right bounds.
     this.nearestX = clamp(circle.centerX(), rect.left, rect.right());
+    // Clamp the circle's center Y to the rectangle's top/bottom bounds.
     this.nearestY = clamp(circle.centerY(), rect.top, rect.bottom());
-    this.dist = Math.sqrt( (this.nearestX - circle.centerX()) ** 2 + 
+
+    // Calculate the distance between the circle's center and this nearest point using Pythagorean theorem.
+    this.dist = Math.sqrt((this.nearestX - circle.centerX()) ** 2 +
                            (this.nearestY - circle.centerY()) ** 2);
   }
-  
+
+  /**
+   * Draws the connector line and distance information on the canvas.
+   * Draws a red line from the circle center to the nearest point on the rectangle.
+   * Draws small circles at both ends of the line.
+   * Displays the calculated distance near the midpoint of the line.
+   */
   draw() {
     ctx.beginPath();
     ctx.strokeStyle = 'red';
     ctx.fillStyle = 'red';
     ctx.moveTo(this.nearestX, this.nearestY);
-    ctx.arc(this.nearestX, this.nearestY, 3, 0, 2*Math.PI);
+    // Draw a small circle (radius 3) at the nearest point on the rectangle.
+    ctx.arc(this.nearestX, this.nearestY, 3, 0, 2 * Math.PI);
     ctx.fill();
+    // Draw the red line connecting the nearest point to the circle's center.
     ctx.lineTo(circle.centerX(), circle.centerY());
     ctx.stroke();
-    ctx.arc(circle.centerX(), circle.centerY(), 3, 0, 2*Math.PI);
+    // Draw a small circle (radius 3) at the circle's center.
+    ctx.arc(circle.centerX(), circle.centerY(), 3, 0, 2 * Math.PI);
     ctx.fill();
+
+    // Display the distance value as text.
     ctx.font = '18px sans-serif';
-    ctx.fillText('' + Math.floor(this.dist), 
-                 (this.nearestX + circle.centerX()) / 2 + 20,
+    ctx.fillStyle = 'black'; // Use black for text for better readability vs red line/dots.
+    ctx.fillText('' + Math.floor(this.dist), // Show integer part of the distance.
+                 (this.nearestX + circle.centerX()) / 2 + 20, // Position text near the line midpoint, offset slightly.
                  (this.nearestY + circle.centerY()) / 2 + 20);
   }
 }
 
 const rect = new Rect(40, 40, 100, 75);
 const circle = new Circle(280, 70, 60);
-const connector = new CenterConnector();
+const connector = new CenterConnector(); // Instance to calculate and draw the connection/distance.
 
-
+/**
+ * The main animation loop. Called repeatedly by setInterval.
+ * Clears the canvas, redraws the rectangle and circle,
+ * updates the connector's position and distance, and redraws the connector.
+ */
 function gameLoop() {
+  // Clear the entire canvas before drawing the new frame.
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Draw the shapes.
   rect.draw();
   circle.draw();
+
+  // Update and draw the connector line and distance.
   connector.update();
   connector.draw();
 }
 
+// Start the animation loop, calling gameLoop every 100 milliseconds (10 times per second).
 window.setInterval(gameLoop, 100);
 
+// Variables to store the mouse offset relative to the top-left corner of the selected object during drag.
 let gripX = 0, gripY = 0;
-canvas.addEventListener('mousedown', (e) => {
-  selectedObject = null;
-  for (let sprite of [circle, rect]) {
-    if (sprite.containsMouse(e.x, e.y)) { 
-      selectedObject = sprite;
-      gripX = e.x - sprite.left;
-      gripY = e.y - sprite.top;
-    }
-  } 
-})
 
+// --- Event Listeners for Mouse Interaction ---
+
+// Handle mouse button press down event.
+canvas.addEventListener('mousedown', (e) => {
+  // Deselect any currently selected object.
+  selectedObject = null;
+  // Check if the mouse click is inside the circle or rectangle.
+  // Iterate in reverse draw order (last drawn object is topmost). Here, rect then circle.
+  for (let sprite of [rect, circle]) { // Check rect first, then circle
+    if (sprite.containsMouse(e.clientX, e.clientY)) { // Use clientX/clientY for consistency
+      selectedObject = sprite; // Select the object.
+      // Record the offset between the mouse click position and the sprite's top-left corner.
+      gripX = e.clientX - sprite.left;
+      gripY = e.clientY - sprite.top;
+      // Stop checking once an object is found.
+      break;
+    }
+  }
+});
+
+// Handle mouse movement event.
 canvas.addEventListener('mousemove', (e) => {
+  // Only proceed if a mouse button is pressed (e.g., during a drag).
+  // e.buttons is a bitmask; non-zero means at least one button is down.
   if (!e.buttons) return;
+  // Only proceed if an object is actually selected.
   if (selectedObject == null) return;
-  selectedObject.moveTo(e.x - gripX, e.y - gripY);
-})
+  // Move the selected object to the current mouse position, adjusted by the grip offset.
+  // This makes the object drag smoothly from the point it was grabbed.
+  selectedObject.moveTo(e.clientX - gripX, e.clientY - gripY); // Use clientX/clientY
+});
       
     </script>
   </body>
