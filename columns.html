@@ -1,10 +1,28 @@
 <html>
   <head><title>Columns</title>
     <style>
+:root {
+  --background-color: lightgrey;
+  --piece-blue: blue;
+  --piece-orange: darkorange;
+  --piece-green: green;
+  --piece-purple: purple;
+  --piece-cyan: darkcyan;
+  --piece-yellow: goldenrod;
+  --piece-red: red;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background-color: #333;
+  }
+}
+
 body {
   display: grid;
   grid-template-columns: 150px auto 200px;  
   gap: 10px;
+  background-color: var(--background-color);
 }
 
 section {
@@ -17,7 +35,7 @@ section div {
   height: 19px;
 }
 #board div {
-  background: lightgrey;
+  background: var(--background-color);
 }
 
 #board {
@@ -32,13 +50,13 @@ section div {
 
 button { margin-bottom: 20px;}
 
-div.blu { background: blue !important; }
-div.ora { background: darkorange !important; }
-div.gre { background: green !important; }
-div.pur { background: purple !important; }
-div.cyn { background: darkcyan !important; }
-div.yel { background: goldenrod !important; }
-div.red { background: red !important; }
+div.blu { background: var(--piece-blue) !important; }
+div.ora { background: var(--piece-orange) !important; }
+div.gre { background: var(--piece-green) !important; }
+div.pur { background: var(--piece-purple) !important; }
+div.cyn { background: var(--piece-cyan) !important; }
+div.yel { background: var(--piece-yellow) !important; }
+div.red { background: var(--piece-red) !important; }
 
 div.blink { border: 2px solid black; }
 
