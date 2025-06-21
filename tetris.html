@@ -5,6 +5,8 @@ body {
   display: grid;
   grid-template-columns: 150px auto 200px;  
   gap: 10px;
+  background-color: light-dark(white, #333);
+  color: light-dark(black, white);
 }
 
 section {
@@ -17,7 +19,7 @@ section div {
   height: 19px;
 }
 #board div {
-  background: lightgrey;
+  background-color: light-dark(lightgrey, #555);
 }
 
 #board {
@@ -384,6 +386,7 @@ function advance() {
 }
 
 document.querySelector('#start').addEventListener('click', start);
+
 document.addEventListener('keydown', (e) => {
    if (!running) return;
    if (e.keyCode == LEFT_CODE) moveLeft();
