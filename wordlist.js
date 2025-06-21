@@ -333,3 +333,6 @@ var wordList = [
   "year","yellow","yes","yesterday","yet","you","young","younger",
   "your","yourself","youth","zero","zebra","zipper","zoo","zulu"
 ];
+
+const wordsByFirstLetter = Map.groupBy(wordList, (word) => word[0]);
+console.log(wordsByFirstLetter);
