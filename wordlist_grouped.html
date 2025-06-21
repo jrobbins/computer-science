@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grouped Word List</title>
+    <script src="wordlist.js"></script>
+</head>
+<body>
+    <h1>Word List Grouped by First Letter</h1>
+
+    <script>
+        // Ensure the DOM is fully loaded before trying to manipulate it,
+        // though in this case, script is at the end of body, so it's mostly fine.
+        document.addEventListener('DOMContentLoaded', () => {
+            if (typeof wordsByFirstLetter === 'undefined' || !(wordsByFirstLetter instanceof Map)) {
+                console.error('wordsByFirstLetter is not defined or not a Map. Make sure wordlist.js is loaded and defines it.');
+                const errorMsg = document.createElement('p');
+                errorMsg.textContent = 'Error: Could not load or process the word list. See console for details.';
+                document.body.appendChild(errorMsg);
+                return;
+            }
+
+            const container = document.createElement('div');
+            document.body.appendChild(container);
+
+            // Sort the keys (letters) alphabetically
+            const sortedLetters = Array.from(wordsByFirstLetter.keys()).sort();
+
+            for (const letter of sortedLetters) {
+                const words = wordsByFirstLetter.get(letter);
+
+                const letterHeading = document.createElement('h2');
+                letterHeading.textContent = letter.toUpperCase();
+                container.appendChild(letterHeading);
+
+                const wordUl = document.createElement('ul');
+                for (const word of words) {
+                    const wordLi = document.createElement('li');
+                    wordLi.textContent = word;
+                    wordUl.appendChild(wordLi);
+                }
+                container.appendChild(wordUl);
+            }
+        });
+    </script>
+</body>
+</html>
